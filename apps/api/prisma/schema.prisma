@@ -63,12 +63,12 @@ model Conversation {
   createdById   String
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  lastMessageAt DateTime? // denormalized for cheap sidebar ordering
+  lastActivityAt DateTime? // last activity (currently messages); denormalized for cheap sidebar ordering
 
   participants ConversationParticipant[]
   messages     Message[]
 
-  @@index([lastMessageAt])
+  @@index([lastActivityAt])
 }
 
 model ConversationParticipant {

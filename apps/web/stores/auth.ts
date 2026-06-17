@@ -1,15 +1,19 @@
 import { defineStore } from 'pinia';
 import {
   AUTH_ERROR_CODES,
+  getApiError,
   type AuthTokenResponse,
   type UserPublicDTO,
   type VerifyOtpInput,
 } from '@yap/contracts';
 
+const HAS_NAME = (u: UserPublicDTO | null): boolean => !!u && u.displayName.trim().length > 0;
+
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(null);
   const user = ref<UserPublicDTO | null>(null);
   const isAuthenticated = computed(() => !!accessToken.value);
+  const needsDisplayName = computed(() => isAuthenticated.value && !HAS_NAME(user.value));
 
   let refreshing: Promise<boolean> | null = null;
 
@@ -23,14 +27,18 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
   }
 
-  function authFetch<T>(path: string, init?: { method?: string; body?: unknown }) {
+  async function authFetch<T>(
+    path: string,
+    init?: { method?: 'GET' | 'POST'; body?: Record<string, unknown> },
+  ): Promise<T> {
     const config = useRuntimeConfig();
-    return $fetch<T>(path, {
+    const result = await $fetch(path, {
       baseURL: config.public.apiBase,
       credentials: 'include',
       method: init?.method,
       body: init?.body,
     });
+    return result as T;
   }
 
   async function requestOtp(email: string): Promise<void> {
@@ -46,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
       setSession(res);
       return 'ok';
     } catch (e: unknown) {
-      const code = (e as { data?: { error?: { code?: string } } })?.data?.error?.code;
+      const code = getApiError(e)?.code;
       if (code === AUTH_ERROR_CODES.displayNameRequired) return 'needs_display_name';
       throw e;
     }
@@ -69,6 +77,14 @@ export const useAuthStore = defineStore('auth', () => {
     return refreshing;
   }
 
+  async function updateProfile(displayName: string): Promise<void> {
+    const api = useApi();
+    user.value = await api<UserPublicDTO>('/users/me', {
+      method: 'PATCH',
+      body: { displayName },
+    });
+  }
+
   async function logout(): Promise<void> {
     try {
       await authFetch('/auth/logout', { method: 'POST' });
@@ -82,10 +98,12 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken,
     user,
     isAuthenticated,
+    needsDisplayName,
     setSession,
     clearSession,
     requestOtp,
     verifyOtp,
+    updateProfile,
     refresh,
     logout,
   };

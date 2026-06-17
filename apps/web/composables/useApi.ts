@@ -1,22 +1,27 @@
-import type { FetchOptions } from 'ofetch';
+export interface ApiOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body?: Record<string, unknown> | string;
+  headers?: HeadersInit;
+  query?: Record<string, string | number | boolean | null | undefined>;
+}
 
 export function useApi() {
   const auth = useAuthStore();
   const config = useRuntimeConfig();
 
-  async function api<T = unknown>(
-    request: string,
-    opts: FetchOptions = {},
-  ): Promise<T> {
-    const call = (token: string | null) => {
-      const headers = new Headers(opts.headers as HeadersInit | undefined);
+  async function api<T = unknown>(request: string, opts: ApiOptions = {}): Promise<T> {
+    const call = async (token: string | null): Promise<T> => {
+      const headers = new Headers(opts.headers);
       if (token) headers.set('Authorization', `Bearer ${token}`);
-      return $fetch<T>(request, {
-        ...opts,
+      const result = await $fetch(request, {
+        method: opts.method,
+        body: opts.body,
+        query: opts.query,
         baseURL: config.public.apiBase,
         credentials: 'include',
         headers,
-      } as FetchOptions);
+      });
+      return result as T;
     };
 
     try {

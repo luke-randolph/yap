@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import {
   CONVERSATION_ERROR_CODES,
@@ -6,7 +7,9 @@ import {
   type MessagesQueryInput,
   type SendMessageInput,
 } from '@yap/contracts';
+import { ConversationsService } from '../conversations/conversations.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { REALTIME_EVENTS, type MessageCreatedEvent } from '../realtime/realtime.events';
 
 const messageInclude = {
   attachments: true,
@@ -17,9 +20,18 @@ type MessageWithRelations = Prisma.MessageGetPayload<{ include: typeof messageIn
 
 @Injectable()
 export class MessagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
+    private readonly conversations: ConversationsService,
+  ) {}
 
-  async list(conversationId: string, query: MessagesQueryInput): Promise<MessageDTO[]> {
+  async list(
+    currentUserId: string,
+    conversationId: string,
+    query: MessagesQueryInput,
+  ): Promise<MessageDTO[]> {
+    await this.conversations.assertParticipant(currentUserId, conversationId);
     const direction: 'before' | 'after' = query.after ? 'after' : 'before';
     const cursorId = query.after ?? query.before;
     const cursor = await this.resolveCursor(conversationId, cursorId);
@@ -58,6 +70,21 @@ export class MessagesService {
     conversationId: string,
     input: SendMessageInput,
   ): Promise<MessageDTO> {
+    // Fetch active participants once: this both gates the send (sender must be a
+    // member) and supplies the recipient list for the realtime broadcast below.
+    const participants = await this.prisma.conversationParticipant.findMany({
+      where: { conversationId, leftAt: null },
+      select: { userId: true },
+    });
+    if (!participants.some((p) => p.userId === senderId)) {
+      throw new ForbiddenException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notParticipant,
+          message: 'Not a participant in this conversation',
+        },
+      });
+    }
+
     if (input.parentMessageId) {
       const parent = await this.prisma.message.findFirst({
         where: { id: input.parentMessageId, conversationId },
@@ -86,11 +113,18 @@ export class MessagesService {
       }),
       this.prisma.conversation.update({
         where: { id: conversationId },
-        data: { lastMessageAt: now },
+        data: { lastActivityAt: now },
       }),
     ]);
 
-    return toMessageDto(message);
+    const dto = toMessageDto(message);
+    const event: MessageCreatedEvent = {
+      message: dto,
+      participantUserIds: participants.map((p) => p.userId),
+      clientMessageId: input.clientMessageId,
+    };
+    this.events.emit(REALTIME_EVENTS.messageCreated, event);
+    return dto;
   }
 
   private async resolveCursor(

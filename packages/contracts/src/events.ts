@@ -1,10 +1,19 @@
 import type { ConversationDTO, MessageDTO } from './dtos';
 
+export type SendMessageAck =
+  | { ok: true; message: MessageDTO }
+  | { ok: false; error: { code: string; message: string } };
+
 export interface ServerToClientEvents {
-  'message.created': (payload: { conversationId: string; message: MessageDTO }) => void;
+  'message.created': (payload: {
+    conversationId: string;
+    message: MessageDTO;
+    clientMessageId?: string;
+  }) => void;
   'message.updated': (payload: { conversationId: string; message: MessageDTO }) => void;
   'message.deleted': (payload: { conversationId: string; messageId: string }) => void;
   'conversation.created': (payload: { conversation: ConversationDTO }) => void;
+  'conversation.updated': (payload: { conversation: ConversationDTO }) => void;
   'participant.added': (payload: {
     conversationId: string;
     participant: ConversationDTO['participants'][number];
@@ -20,7 +29,7 @@ export interface ClientToServerEvents {
       parentMessageId?: string;
       clientMessageId: string;
     },
-    ack: (response: { ok: true; message: MessageDTO } | { ok: false; error: string }) => void,
+    ack: (response: SendMessageAck) => void,
   ) => void;
   'auth.refresh': (payload: { accessToken: string }) => void;
 }

@@ -7,10 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
-
-interface ErrorBody {
-  error: { code: string; message: string; details?: unknown };
-}
+import type { ApiErrorBody } from '@yap/contracts';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -30,13 +27,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     this.logger.error(exception);
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' },
-    } satisfies ErrorBody);
+    } satisfies ApiErrorBody);
   }
 }
 
-function toErrorBody(response: unknown, status: number): ErrorBody {
+function toErrorBody(response: unknown, status: number): ApiErrorBody {
   if (typeof response === 'object' && response !== null && 'error' in response) {
-    return response as ErrorBody;
+    return response as ApiErrorBody;
   }
 
   if (typeof response === 'string') {
@@ -44,7 +41,7 @@ function toErrorBody(response: unknown, status: number): ErrorBody {
   }
 
   if (typeof response === 'object' && response !== null && 'message' in response) {
-    const msg = (response as { message: unknown }).message;
+    const msg = response.message;
     return {
       error: {
         code: defaultCode(status),

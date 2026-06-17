@@ -1,12 +1,24 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import {
   CONVERSATION_ERROR_CODES,
   type ConversationDTO,
   type CreateConversationInput,
   type ParticipantDTO,
+  type UpdateConversationInput,
 } from '@yap/contracts';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  REALTIME_EVENTS,
+  type ConversationCreatedEvent,
+  type ConversationUpdatedEvent,
+} from '../realtime/realtime.events';
 import { userPublicSelect } from '../users/user.selects';
 
 const conversationInclude = {
@@ -22,12 +34,12 @@ type ConversationWithParticipants = Prisma.ConversationGetPayload<{
 
 @Injectable()
 export class ConversationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: EventEmitter2,
+  ) {}
 
-  async create(
-    currentUserId: string,
-    input: CreateConversationInput,
-  ): Promise<ConversationDTO> {
+  async create(currentUserId: string, input: CreateConversationInput): Promise<ConversationDTO> {
     const me = await this.prisma.user.findUniqueOrThrow({
       where: { id: currentUserId },
       select: { id: true, email: true },
@@ -58,7 +70,7 @@ export class ConversationsService {
     const created = await this.prisma.conversation.create({
       data: {
         isGroup,
-        name: isGroup ? input.name ?? null : null,
+        name: isGroup ? (input.name ?? null) : null,
         createdById: currentUserId,
         participants: {
           create: [me.id, ...otherIds].map((userId) => ({
@@ -70,22 +82,63 @@ export class ConversationsService {
       include: conversationInclude,
     });
 
-    return this.toDto(created, currentUserId);
+    const { actorDto, byUserId } = this.perUserDtos(created, currentUserId);
+    const event: ConversationCreatedEvent = { conversationByUserId: byUserId };
+    this.events.emit(REALTIME_EVENTS.conversationCreated, event);
+    return actorDto;
+  }
+
+  async update(
+    currentUserId: string,
+    conversationId: string,
+    input: UpdateConversationInput,
+  ): Promise<ConversationDTO> {
+    await this.assertParticipant(currentUserId, conversationId);
+
+    const existing = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { isGroup: true },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.conversationNotFound,
+          message: 'Conversation not found',
+        },
+      });
+    }
+    if (!existing.isGroup) {
+      throw new BadRequestException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notGroupConversation,
+          message: 'Only group conversations can be renamed',
+        },
+      });
+    }
+
+    const updated = await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { name: input.name },
+      include: conversationInclude,
+    });
+
+    const { actorDto, byUserId } = this.perUserDtos(updated, currentUserId);
+    const event: ConversationUpdatedEvent = { conversationByUserId: byUserId };
+    this.events.emit(REALTIME_EVENTS.conversationUpdated, event);
+    return actorDto;
   }
 
   async listForUser(currentUserId: string): Promise<ConversationDTO[]> {
     const rows = await this.prisma.conversation.findMany({
       where: { participants: { some: { userId: currentUserId, leftAt: null } } },
       include: conversationInclude,
-      orderBy: [
-        { lastMessageAt: { sort: 'desc', nulls: 'last' } },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ lastActivityAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
     return rows.map((row) => this.toDto(row, currentUserId));
   }
 
   async findById(currentUserId: string, conversationId: string): Promise<ConversationDTO> {
+    await this.assertParticipant(currentUserId, conversationId);
     const row = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: conversationInclude,
@@ -99,6 +152,21 @@ export class ConversationsService {
       });
     }
     return this.toDto(row, currentUserId);
+  }
+
+  async assertParticipant(userId: string, conversationId: string): Promise<void> {
+    const participant = await this.prisma.conversationParticipant.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+      select: { leftAt: true },
+    });
+    if (!participant || participant.leftAt) {
+      throw new ForbiddenException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notParticipant,
+          message: 'Not a participant in this conversation',
+        },
+      });
+    }
   }
 
   private async findExistingDm(
@@ -117,10 +185,23 @@ export class ConversationsService {
     });
   }
 
-  private toDto(
+  /**
+   * Builds the per-recipient DTO map for a realtime broadcast (displayName is
+   * computed per viewer) and returns the actor's own DTO alongside it.
+   */
+  private perUserDtos(
     row: ConversationWithParticipants,
-    currentUserId: string,
-  ): ConversationDTO {
+    actorUserId: string,
+  ): { actorDto: ConversationDTO; byUserId: Map<string, ConversationDTO> } {
+    const actorDto = this.toDto(row, actorUserId);
+    const byUserId = new Map<string, ConversationDTO>();
+    for (const p of row.participants) {
+      byUserId.set(p.userId, p.userId === actorUserId ? actorDto : this.toDto(row, p.userId));
+    }
+    return { actorDto, byUserId };
+  }
+
+  private toDto(row: ConversationWithParticipants, currentUserId: string): ConversationDTO {
     const participants: ParticipantDTO[] = row.participants.map((p) => ({
       user: p.user,
       joinedAt: p.joinedAt.toISOString(),
@@ -135,7 +216,7 @@ export class ConversationsService {
       name: row.name,
       displayName: computeDisplayName(row, participants, currentUserId),
       participants,
-      lastMessageAt: row.lastMessageAt?.toISOString() ?? null,
+      lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     };
   }
