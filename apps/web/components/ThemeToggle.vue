@@ -6,7 +6,7 @@ const order = ['system', 'light', 'dark'] as const;
 
 function cycle() {
   const i = order.indexOf(colorMode.preference as (typeof order)[number]);
-  colorMode.preference = order[(i + 1) % order.length];
+  colorMode.preference = order[(i + 1) % order.length] ?? 'system';
 }
 </script>
 

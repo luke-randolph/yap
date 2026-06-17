@@ -1,10 +1,15 @@
 import type { ConversationDTO, MessageDTO } from './dtos';
 
 export interface ServerToClientEvents {
-  'message.created': (payload: { conversationId: string; message: MessageDTO }) => void;
+  'message.created': (payload: {
+    conversationId: string;
+    message: MessageDTO;
+    clientMessageId?: string;
+  }) => void;
   'message.updated': (payload: { conversationId: string; message: MessageDTO }) => void;
   'message.deleted': (payload: { conversationId: string; messageId: string }) => void;
   'conversation.created': (payload: { conversation: ConversationDTO }) => void;
+  'conversation.updated': (payload: { conversation: ConversationDTO }) => void;
   'participant.added': (payload: {
     conversationId: string;
     participant: ConversationDTO['participants'][number];

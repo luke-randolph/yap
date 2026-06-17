@@ -4,6 +4,7 @@ export const SOCKET_EVENTS = {
   messageUpdated: 'message.updated',
   messageDeleted: 'message.deleted',
   conversationCreated: 'conversation.created',
+  conversationUpdated: 'conversation.updated',
   participantAdded: 'participant.added',
   participantLeft: 'participant.left',
   authRefresh: 'auth.refresh',

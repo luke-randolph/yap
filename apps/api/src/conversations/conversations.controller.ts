@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -13,15 +14,16 @@ import {
   type MessageDTO,
   type MessagesQueryInput,
   type SendMessageInput,
+  type UpdateConversationInput,
   createConversationSchema,
   messagesQuerySchema,
   sendMessageSchema,
+  updateConversationSchema,
 } from '@yap/contracts';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard, type AccessTokenPayload } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { MessagesService } from '../messages/messages.service';
-import { ConversationParticipantGuard } from './conversation-participant.guard';
 import { ConversationsService } from './conversations.service';
 
 @Controller('conversations')
@@ -45,8 +47,16 @@ export class ConversationsController {
     return this.conversations.listForUser(current.sub);
   }
 
+  @Patch(':conversationId')
+  async update(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Body(new ZodValidationPipe(updateConversationSchema)) body: UpdateConversationInput,
+  ): Promise<ConversationDTO> {
+    return this.conversations.update(current.sub, conversationId, body);
+  }
+
   @Get(':conversationId')
-  @UseGuards(ConversationParticipantGuard)
   async findOne(
     @CurrentUser() current: AccessTokenPayload,
     @Param('conversationId') conversationId: string,
@@ -55,16 +65,15 @@ export class ConversationsController {
   }
 
   @Get(':conversationId/messages')
-  @UseGuards(ConversationParticipantGuard)
   async listMessages(
+    @CurrentUser() current: AccessTokenPayload,
     @Param('conversationId') conversationId: string,
     @Query(new ZodValidationPipe(messagesQuerySchema)) query: MessagesQueryInput,
   ): Promise<MessageDTO[]> {
-    return this.messages.list(conversationId, query);
+    return this.messages.list(current.sub, conversationId, query);
   }
 
   @Post(':conversationId/messages')
-  @UseGuards(ConversationParticipantGuard)
   async sendMessage(
     @CurrentUser() current: AccessTokenPayload,
     @Param('conversationId') conversationId: string,
