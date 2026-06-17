@@ -61,7 +61,7 @@ export class AuthController {
     @Ip() ip: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<AuthTokenResponse> {
-    const cookie = req.cookies?.[REFRESH_COOKIE_NAME];
+    const cookie = readRefreshCookie(req);
     const issuance = await this.auth.refresh(cookie, { userAgent, ipAddress: ip });
     setRefreshCookie(res, issuance);
     return toAuthResponse(issuance);
@@ -70,10 +70,15 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
-    const cookie = req.cookies?.[REFRESH_COOKIE_NAME];
+    const cookie = readRefreshCookie(req);
     await this.auth.logout(cookie);
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
   }
+}
+
+function readRefreshCookie(req: Request): string | undefined {
+  const cookies = req.cookies as Record<string, string | undefined> | undefined;
+  return cookies?.[REFRESH_COOKIE_NAME];
 }
 
 function toAuthResponse(issuance: TokenIssuance): AuthTokenResponse {

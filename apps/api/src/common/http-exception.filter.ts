@@ -44,7 +44,7 @@ function toErrorBody(response: unknown, status: number): ErrorBody {
   }
 
   if (typeof response === 'object' && response !== null && 'message' in response) {
-    const msg = (response as { message: unknown }).message;
+    const msg = response.message;
     return {
       error: {
         code: defaultCode(status),
