@@ -69,10 +69,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<void> {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<void> {
     const cookie = req.cookies?.[REFRESH_COOKIE_NAME];
     await this.auth.logout(cookie);
     res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });

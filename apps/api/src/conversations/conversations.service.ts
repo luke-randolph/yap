@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import {
@@ -34,10 +39,7 @@ export class ConversationsService {
     private readonly events: EventEmitter2,
   ) {}
 
-  async create(
-    currentUserId: string,
-    input: CreateConversationInput,
-  ): Promise<ConversationDTO> {
+  async create(currentUserId: string, input: CreateConversationInput): Promise<ConversationDTO> {
     const me = await this.prisma.user.findUniqueOrThrow({
       where: { id: currentUserId },
       select: { id: true, email: true },
@@ -68,7 +70,7 @@ export class ConversationsService {
     const created = await this.prisma.conversation.create({
       data: {
         isGroup,
-        name: isGroup ? input.name ?? null : null,
+        name: isGroup ? (input.name ?? null) : null,
         createdById: currentUserId,
         participants: {
           create: [me.id, ...otherIds].map((userId) => ({
@@ -130,10 +132,7 @@ export class ConversationsService {
     const rows = await this.prisma.conversation.findMany({
       where: { participants: { some: { userId: currentUserId, leftAt: null } } },
       include: conversationInclude,
-      orderBy: [
-        { lastMessageAt: { sort: 'desc', nulls: 'last' } },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ lastMessageAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
     return rows.map((row) => this.toDto(row, currentUserId));
   }
@@ -197,18 +196,12 @@ export class ConversationsService {
     const actorDto = this.toDto(row, actorUserId);
     const byUserId = new Map<string, ConversationDTO>();
     for (const p of row.participants) {
-      byUserId.set(
-        p.userId,
-        p.userId === actorUserId ? actorDto : this.toDto(row, p.userId),
-      );
+      byUserId.set(p.userId, p.userId === actorUserId ? actorDto : this.toDto(row, p.userId));
     }
     return { actorDto, byUserId };
   }
 
-  private toDto(
-    row: ConversationWithParticipants,
-    currentUserId: string,
-  ): ConversationDTO {
+  private toDto(row: ConversationWithParticipants, currentUserId: string): ConversationDTO {
     const participants: ParticipantDTO[] = row.participants.map((p) => ({
       user: p.user,
       joinedAt: p.joinedAt.toISOString(),

@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Patch,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Patch, Query, UseGuards } from '@nestjs/common';
 import {
   type UpdateUserInput,
   type UserPublicDTO,

@@ -33,9 +33,7 @@ import {
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type ChatServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
-type SendAck =
-  | { ok: true; message: MessageDTO }
-  | { ok: false; error: string };
+type SendAck = { ok: true; message: MessageDTO } | { ok: false; error: string };
 
 @WebSocketGateway({
   cors: {
