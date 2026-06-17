@@ -1,7 +1,5 @@
-import { io, type Socket } from 'socket.io-client';
-import type { ClientToServerEvents, ServerToClientEvents } from '@yap/contracts';
-
-export type ChatSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+import { io } from 'socket.io-client';
+import type { ChatSocket } from '~/types/socket';
 
 export default defineNuxtPlugin(() => {
   const auth = useAuthStore();
@@ -39,8 +37,19 @@ export default defineNuxtPlugin(() => {
   watch(
     () => auth.accessToken,
     (token) => {
-      if (token) ensureConnected();
-      else disconnect();
+      if (!token) {
+        disconnect();
+        return;
+      }
+      // A live socket only authenticates at handshake, so hand it the refreshed
+      // token over `auth.refresh` to keep the session valid without reconnecting.
+      // Updating `socket.auth` also covers any future reconnect.
+      if (socket?.connected) {
+        socket.auth = { token };
+        socket.emit('auth.refresh', { accessToken: token });
+      } else {
+        ensureConnected();
+      }
     },
     { immediate: true },
   );

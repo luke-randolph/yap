@@ -6,6 +6,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { AUTH_ERROR_CODES, type AuthTokenResponse } from '@yap/contracts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { type AccessTokenPayload } from './jwt-auth.guard';
 
 const OTP_TTL_MIN = 10;
 const OTP_REQUEST_WINDOW_MIN = 10;
@@ -25,6 +26,14 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
   ) {}
+
+  // Shared by the HTTP guard and the websocket gateway so the secret name and
+  // payload type live in one place. Throws on an invalid or expired token.
+  verifyAccessToken(token: string): Promise<AccessTokenPayload> {
+    return this.jwt.verifyAsync<AccessTokenPayload>(token, {
+      secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+    });
+  }
 
   async requestOtp(emailAddress: string, ipAddress?: string): Promise<void> {
     const windowStart = new Date(Date.now() - OTP_REQUEST_WINDOW_MIN * 60_000);

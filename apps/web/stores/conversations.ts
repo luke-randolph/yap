@@ -35,6 +35,17 @@ export const useConversationsStore = defineStore('conversations', () => {
     list.value.sort(sortConversations);
   }
 
+  // Record new activity on a conversation, floating it to the top of the list.
+  // No-op if the conversation isn't loaded.
+  function markActivity(conversationId: string, at: string) {
+    const conv = list.value.find((c) => c.id === conversationId);
+    if (!conv) return;
+    if (!conv.lastMessageAt || Date.parse(at) > Date.parse(conv.lastMessageAt)) {
+      conv.lastMessageAt = at;
+      list.value.sort(sortConversations);
+    }
+  }
+
   async function create(input: CreateConversationInput): Promise<ConversationDTO> {
     const api = useApi();
     const conv = await api<ConversationDTO>('/conversations', {
@@ -73,6 +84,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     loading,
     fetchAll,
     addOrReplace,
+    markActivity,
     create,
     update,
     select,

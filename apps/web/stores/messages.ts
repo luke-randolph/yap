@@ -3,6 +3,10 @@ import { PAGINATION, type MessageDTO } from '@yap/contracts';
 
 export type SendStatus = 'sending' | 'sent' | 'failed';
 
+// How long to wait for the server's send ack before marking a message failed,
+// so a dropped ack doesn't leave the bubble stuck on "Sending…".
+const SEND_ACK_TIMEOUT_MS = 10_000;
+
 export interface ChatMessage extends MessageDTO {
   clientMessageId?: string;
   status?: SendStatus;
@@ -64,10 +68,15 @@ export const useMessagesStore = defineStore('messages', () => {
 
     const socket = useSocket().ensureConnected();
     if (socket) {
-      socket.emit('message.send', { conversationId, body, clientMessageId }, (res) => {
-        if (res.ok) upsert(conversationId, { ...res.message, clientMessageId, status: 'sent' });
-        else setStatus(conversationId, clientMessageId, 'failed');
-      });
+      socket
+        .timeout(SEND_ACK_TIMEOUT_MS)
+        .emit('message.send', { conversationId, body, clientMessageId }, (err, res) => {
+          if (err || !res.ok) {
+            setStatus(conversationId, clientMessageId, 'failed');
+            return;
+          }
+          upsert(conversationId, { ...res.message, clientMessageId, status: 'sent' });
+        });
       return;
     }
 
@@ -109,7 +118,7 @@ export const useMessagesStore = defineStore('messages', () => {
 
   // Insert or replace a message, matching first on clientMessageId (to reconcile
   // an optimistic send) then on server id (idempotent across ack + broadcast).
-  function upsert(conversationId: string, msg: ChatMessage): void {
+  function upsert(conversationId: string, msg: ChatMessage, sort = true): void {
     const items = bucket(conversationId);
     let idx = -1;
     if (msg.clientMessageId) {
@@ -118,11 +127,12 @@ export const useMessagesStore = defineStore('messages', () => {
     if (idx === -1) idx = items.findIndex((m) => m.id === msg.id);
     if (idx === -1) items.push(msg);
     else items[idx] = { ...items[idx], ...msg };
-    items.sort(byTime);
+    if (sort) items.sort(byTime);
   }
 
   function upsertMany(conversationId: string, msgs: MessageDTO[]): void {
-    for (const m of msgs) upsert(conversationId, m);
+    for (const m of msgs) upsert(conversationId, m, false);
+    bucket(conversationId).sort(byTime);
   }
 
   function setStatus(conversationId: string, clientMessageId: string, status: SendStatus): void {

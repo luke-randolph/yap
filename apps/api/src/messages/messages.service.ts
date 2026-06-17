@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import {
@@ -70,7 +70,21 @@ export class MessagesService {
     conversationId: string,
     input: SendMessageInput,
   ): Promise<MessageDTO> {
-    await this.conversations.assertParticipant(senderId, conversationId);
+    // Fetch active participants once: this both gates the send (sender must be a
+    // member) and supplies the recipient list for the realtime broadcast below.
+    const participants = await this.prisma.conversationParticipant.findMany({
+      where: { conversationId, leftAt: null },
+      select: { userId: true },
+    });
+    if (!participants.some((p) => p.userId === senderId)) {
+      throw new ForbiddenException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notParticipant,
+          message: 'Not a participant in this conversation',
+        },
+      });
+    }
+
     if (input.parentMessageId) {
       const parent = await this.prisma.message.findFirst({
         where: { id: input.parentMessageId, conversationId },
@@ -87,25 +101,19 @@ export class MessagesService {
     }
 
     const now = new Date();
-    const [[message], participants] = await Promise.all([
-      this.prisma.$transaction([
-        this.prisma.message.create({
-          data: {
-            conversationId,
-            senderId,
-            body: input.body,
-            parentMessageId: input.parentMessageId ?? null,
-          },
-          include: messageInclude,
-        }),
-        this.prisma.conversation.update({
-          where: { id: conversationId },
-          data: { lastMessageAt: now },
-        }),
-      ]),
-      this.prisma.conversationParticipant.findMany({
-        where: { conversationId, leftAt: null },
-        select: { userId: true },
+    const [message] = await this.prisma.$transaction([
+      this.prisma.message.create({
+        data: {
+          conversationId,
+          senderId,
+          body: input.body,
+          parentMessageId: input.parentMessageId ?? null,
+        },
+        include: messageInclude,
+      }),
+      this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: { lastMessageAt: now },
       }),
     ]);
 

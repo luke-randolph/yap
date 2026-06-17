@@ -1,5 +1,9 @@
 import type { ConversationDTO, MessageDTO } from './dtos';
 
+export type SendMessageAck =
+  | { ok: true; message: MessageDTO }
+  | { ok: false; error: { code: string; message: string } };
+
 export interface ServerToClientEvents {
   'message.created': (payload: {
     conversationId: string;
@@ -25,7 +29,7 @@ export interface ClientToServerEvents {
       parentMessageId?: string;
       clientMessageId: string;
     },
-    ack: (response: { ok: true; message: MessageDTO } | { ok: false; error: string }) => void,
+    ack: (response: SendMessageAck) => void,
   ) => void;
   'auth.refresh': (payload: { accessToken: string }) => void;
 }

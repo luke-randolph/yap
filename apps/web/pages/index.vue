@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, Pencil, X } from 'lucide-vue-next';
-import type { ConversationDTO, MessageDTO } from '@yap/contracts';
+import type { ConversationDTO } from '@yap/contracts';
 
 const auth = useAuthStore();
 const conversations = useConversationsStore();
@@ -14,37 +14,11 @@ const nameDraft = ref('');
 const savingName = ref(false);
 const nameError = ref<string | null>(null);
 
+useRealtimeSync();
+
 onMounted(async () => {
   await conversations.fetchAll();
-  const sock = socket.ensureConnected();
-  if (!sock) return;
-  sock.on('conversation.created', onConversationCreated);
-  sock.on('conversation.updated', onConversationUpdated);
-  sock.on('message.created', onMessageCreated);
 });
-
-onBeforeUnmount(() => {
-  const sock = socket.get();
-  sock?.off('conversation.created', onConversationCreated);
-  sock?.off('conversation.updated', onConversationUpdated);
-  sock?.off('message.created', onMessageCreated);
-});
-
-function onConversationCreated(payload: { conversation: ConversationDTO }) {
-  conversations.addOrReplace(payload.conversation);
-}
-
-function onConversationUpdated(payload: { conversation: ConversationDTO }) {
-  conversations.addOrReplace(payload.conversation);
-}
-
-function onMessageCreated(payload: {
-  conversationId: string;
-  message: MessageDTO;
-  clientMessageId?: string;
-}) {
-  messages.handleIncoming(payload);
-}
 
 function onCreated(conv: ConversationDTO) {
   conversations.select(conv.id);

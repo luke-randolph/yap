@@ -1,4 +1,4 @@
-import type { ChatSocket } from '~/plugins/socket.client';
+import type { ChatSocket } from '~/types/socket';
 
 export interface SocketHandle {
   get(): ChatSocket | null;
@@ -8,5 +8,5 @@ export interface SocketHandle {
 
 export function useSocket(): SocketHandle {
   const { $chatSocket } = useNuxtApp();
-  return $chatSocket as SocketHandle;
+  return $chatSocket;
 }
