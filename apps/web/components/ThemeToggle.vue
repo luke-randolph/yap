@@ -2,7 +2,7 @@
 import { Sun, Moon, Monitor } from "lucide-vue-next";
 
 const colorMode = useColorMode();
-const order = ["system", "light", "dark"] as const;
+const order = ["system", "light", "dark"];
 
 function cycle() {
   const i = order.indexOf(colorMode.preference);

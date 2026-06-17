@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, Pencil, X } from 'lucide-vue-next';
-import type { ConversationDTO } from '@yap/contracts';
+import { getApiError, type ConversationDTO } from '@yap/contracts';
 
 const auth = useAuthStore();
 const conversations = useConversationsStore();
@@ -63,7 +63,7 @@ async function saveName() {
 }
 
 function extractMessage(e: unknown): string | null {
-  return (e as { data?: { error?: { message?: string } } })?.data?.error?.message ?? null;
+  return getApiError(e)?.message ?? null;
 }
 
 async function handleLogout() {
@@ -166,11 +166,7 @@ async function handleLogout() {
       </main>
     </div>
 
-    <NewChatModal
-      v-if="showNewChat"
-      @close="showNewChat = false"
-      @created="onCreated"
-    />
+    <NewChatModal v-if="showNewChat" @close="showNewChat = false" @created="onCreated" />
 
     <DisplayNamePrompt v-if="auth.needsDisplayName" />
   </div>

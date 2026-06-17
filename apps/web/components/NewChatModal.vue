@@ -4,6 +4,7 @@ import {
   CONVERSATION_ERROR_CODES,
   VALIDATION_LIMITS,
   emailSchema,
+  getApiError,
   type ConversationDTO,
   type UserPublicDTO,
 } from '@yap/contracts';
@@ -147,11 +148,13 @@ async function submit() {
 }
 
 function extractMessage(e: unknown): string | null {
-  const data = (e as { data?: { error?: { code?: string; message?: string; details?: { unknownEmails?: string[] } } } })?.data?.error;
-  if (data?.code === CONVERSATION_ERROR_CODES.unknownEmails && data.details?.unknownEmails) {
-    return `Not on Yap yet: ${data.details.unknownEmails.join(', ')}`;
+  const err = getApiError(e);
+  if (!err) return null;
+  if (err.code === CONVERSATION_ERROR_CODES.unknownEmails) {
+    const unknownEmails = (err.details as { unknownEmails?: string[] } | undefined)?.unknownEmails;
+    if (unknownEmails) return `Not on Yap yet: ${unknownEmails.join(', ')}`;
   }
-  return data?.message ?? null;
+  return err.message ?? null;
 }
 </script>
 

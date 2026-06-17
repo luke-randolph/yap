@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import {
   AUTH_ERROR_CODES,
+  getApiError,
   type AuthTokenResponse,
   type UserPublicDTO,
   type VerifyOtpInput,
@@ -53,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
       setSession(res);
       return 'ok';
     } catch (e: unknown) {
-      const code = (e as { data?: { error?: { code?: string } } })?.data?.error?.code;
+      const code = getApiError(e)?.code;
       if (code === AUTH_ERROR_CODES.displayNameRequired) return 'needs_display_name';
       throw e;
     }

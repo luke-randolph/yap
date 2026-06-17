@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getApiError } from '@yap/contracts';
+
 const auth = useAuthStore();
 
 const name = ref(auth.user?.displayName?.trim() ?? '');
@@ -25,7 +27,7 @@ async function submit() {
 }
 
 function extractMessage(e: unknown): string | null {
-  return (e as { data?: { error?: { message?: string } } })?.data?.error?.message ?? null;
+  return getApiError(e)?.message ?? null;
 }
 </script>
 
