@@ -19,7 +19,7 @@ export interface ConversationDTO {
   name: string | null;
   displayName: string;
   participants: ParticipantDTO[];
-  lastMessageAt: string | null;
+  lastActivityAt: string | null;
   createdAt: string;
 }
 

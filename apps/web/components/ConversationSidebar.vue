@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>();
 
 function lastActivity(conv: ConversationDTO): string {
-  const iso = conv.lastMessageAt ?? conv.createdAt;
+  const iso = conv.lastActivityAt ?? conv.createdAt;
   const d = new Date(iso);
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();

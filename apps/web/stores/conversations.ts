@@ -40,8 +40,8 @@ export const useConversationsStore = defineStore('conversations', () => {
   function markActivity(conversationId: string, at: string) {
     const conv = list.value.find((c) => c.id === conversationId);
     if (!conv) return;
-    if (!conv.lastMessageAt || Date.parse(at) > Date.parse(conv.lastMessageAt)) {
-      conv.lastMessageAt = at;
+    if (!conv.lastActivityAt || Date.parse(at) > Date.parse(conv.lastActivityAt)) {
+      conv.lastActivityAt = at;
       list.value.sort(sortConversations);
     }
   }
@@ -93,8 +93,8 @@ export const useConversationsStore = defineStore('conversations', () => {
 });
 
 function sortConversations(a: ConversationDTO, b: ConversationDTO): number {
-  const at = a.lastMessageAt ? Date.parse(a.lastMessageAt) : -Infinity;
-  const bt = b.lastMessageAt ? Date.parse(b.lastMessageAt) : -Infinity;
+  const at = a.lastActivityAt ? Date.parse(a.lastActivityAt) : -Infinity;
+  const bt = b.lastActivityAt ? Date.parse(b.lastActivityAt) : -Infinity;
   if (at !== bt) return bt - at;
   return Date.parse(b.createdAt) - Date.parse(a.createdAt);
 }
