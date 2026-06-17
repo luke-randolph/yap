@@ -7,6 +7,9 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   vite: {
     plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: ['socket.io-client', 'zod', 'lucide-vue-next'],
+    },
   },
   colorMode: {
     preference: 'system',
