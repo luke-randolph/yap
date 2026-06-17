@@ -132,7 +132,7 @@ export class ConversationsService {
     const rows = await this.prisma.conversation.findMany({
       where: { participants: { some: { userId: currentUserId, leftAt: null } } },
       include: conversationInclude,
-      orderBy: [{ lastMessageAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+      orderBy: [{ lastActivityAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
     return rows.map((row) => this.toDto(row, currentUserId));
   }
@@ -216,7 +216,7 @@ export class ConversationsService {
       name: row.name,
       displayName: computeDisplayName(row, participants, currentUserId),
       participants,
-      lastMessageAt: row.lastMessageAt?.toISOString() ?? null,
+      lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     };
   }
