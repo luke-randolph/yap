@@ -34,7 +34,3 @@ docker compose up -d        # starts Postgres
 pnpm prisma migrate dev     # apply schema (after Ticket 2)
 pnpm dev                    # starts web (:3000) and api (:3333)
 ```
-
-## Phase 1 status
-
-Ship-list lives in `C:\Users\localAdmin\.claude\plans\can-you-help-me-snappy-raccoon.md`.
