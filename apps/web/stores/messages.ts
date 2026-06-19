@@ -17,8 +17,23 @@ export const useMessagesStore = defineStore('messages', () => {
   const loaded = ref<Record<string, boolean>>({});
   const loading = ref<Record<string, boolean>>({});
 
+  // Message the composer is replying to; cleared on conversation switch.
+  const replyTarget = ref<ChatMessage | null>(null);
+
   function list(conversationId: string): ChatMessage[] {
     return byConversation.value[conversationId] ?? [];
+  }
+
+  function messageById(conversationId: string, id: string): ChatMessage | undefined {
+    return byConversation.value[conversationId]?.find((m) => m.id === id);
+  }
+
+  function setReplyTarget(msg: ChatMessage): void {
+    replyTarget.value = msg;
+  }
+
+  function clearReplyTarget(): void {
+    replyTarget.value = null;
   }
 
   function isLoading(conversationId: string): boolean {
@@ -47,7 +62,11 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
-  async function send(conversationId: string, body: string): Promise<void> {
+  async function send(
+    conversationId: string,
+    body: string,
+    parentMessageId: string | null = null,
+  ): Promise<void> {
     const auth = useAuthStore();
     const clientMessageId = crypto.randomUUID();
     const optimistic: ChatMessage = {
@@ -55,7 +74,7 @@ export const useMessagesStore = defineStore('messages', () => {
       conversationId,
       senderId: auth.user?.id ?? '',
       body,
-      parentMessageId: null,
+      parentMessageId,
       attachments: [],
       reactions: [],
       createdAt: new Date().toISOString(),
@@ -70,13 +89,17 @@ export const useMessagesStore = defineStore('messages', () => {
     if (socket) {
       socket
         .timeout(SEND_ACK_TIMEOUT_MS)
-        .emit('message.send', { conversationId, body, clientMessageId }, (err, res) => {
-          if (err || !res.ok) {
-            setStatus(conversationId, clientMessageId, 'failed');
-            return;
-          }
-          upsert(conversationId, { ...res.message, clientMessageId, status: 'sent' });
-        });
+        .emit(
+          'message.send',
+          { conversationId, body, clientMessageId, parentMessageId: parentMessageId ?? undefined },
+          (err, res) => {
+            if (err || !res.ok) {
+              setStatus(conversationId, clientMessageId, 'failed');
+              return;
+            }
+            upsert(conversationId, { ...res.message, clientMessageId, status: 'sent' });
+          },
+        );
       return;
     }
 
@@ -85,7 +108,7 @@ export const useMessagesStore = defineStore('messages', () => {
       const api = useApi();
       const msg = await api<MessageDTO>(`/conversations/${conversationId}/messages`, {
         method: 'POST',
-        body: { body, clientMessageId },
+        body: { body, clientMessageId, parentMessageId: parentMessageId ?? undefined },
       });
       upsert(conversationId, { ...msg, clientMessageId, status: 'sent' });
     } catch {
@@ -109,6 +132,7 @@ export const useMessagesStore = defineStore('messages', () => {
     byConversation.value = {};
     loaded.value = {};
     loading.value = {};
+    replyTarget.value = null;
   }
 
   function bucket(conversationId: string): ChatMessage[] {
@@ -143,6 +167,10 @@ export const useMessagesStore = defineStore('messages', () => {
 
   return {
     list,
+    messageById,
+    replyTarget,
+    setReplyTarget,
+    clearReplyTarget,
     isLoading,
     ensureLoaded,
     fetchHistory,

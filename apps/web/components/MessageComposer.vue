@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SendHorizontal } from 'lucide-vue-next';
+import { Reply, SendHorizontal, X } from 'lucide-vue-next';
 import { VALIDATION_LIMITS } from '@yap/contracts';
 
 const props = defineProps<{
@@ -7,19 +7,51 @@ const props = defineProps<{
 }>();
 
 const messages = useMessagesStore();
+const conversations = useConversationsStore();
+const auth = useAuthStore();
 
 const draft = ref('');
+
+const replyToName = computed(() => {
+  const target = messages.replyTarget;
+  if (!target) return '';
+  if (target.senderId === auth.user?.id) return 'yourself';
+  const participants = conversations.selected?.participants ?? [];
+  return participants.find((p) => p.user.id === target.senderId)?.user.displayName ?? 'Unknown';
+});
+
+const replySnippet = computed(() => messages.replyTarget?.body ?? 'Attachment');
 
 async function send() {
   const body = draft.value.trim();
   if (!body) return;
+  const parentMessageId = messages.replyTarget?.id ?? null;
   draft.value = '';
-  await messages.send(props.conversationId, body);
+  messages.clearReplyTarget();
+  await messages.send(props.conversationId, body, parentMessageId);
 }
 </script>
 
 <template>
   <form class="border-t border-border bg-card px-4 py-3" @submit.prevent="send">
+    <div
+      v-if="messages.replyTarget"
+      class="mb-2 flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm"
+    >
+      <Reply class="h-4 w-4 shrink-0 text-muted-foreground" />
+      <div class="min-w-0 flex-1">
+        <p class="text-xs font-medium">Replying to {{ replyToName }}</p>
+        <p class="truncate text-xs text-muted-foreground">{{ replySnippet }}</p>
+      </div>
+      <button
+        type="button"
+        class="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+        title="Cancel reply"
+        @click="messages.clearReplyTarget()"
+      >
+        <X class="h-4 w-4" />
+      </button>
+    </div>
     <div class="flex items-end gap-2">
       <textarea
         v-model="draft"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ConversationDTO } from '@yap/contracts';
+import type { ChatMessage } from '~/stores/messages';
 
 const props = defineProps<{
   conversation: ConversationDTO;
@@ -31,6 +32,24 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+function parentOf(m: ChatMessage): ChatMessage | undefined {
+  if (!m.parentMessageId) return undefined;
+  return messages.messageById(props.conversation.id, m.parentMessageId);
+}
+
+function parentSender(m: ChatMessage): string {
+  const p = parentOf(m);
+  if (!p) return '';
+  return isMine(p.senderId) ? 'You' : senderName(p.senderId);
+}
+
+function parentSnippet(m: ChatMessage): string {
+  const p = parentOf(m);
+  if (!p) return 'Original message unavailable';
+  if (p.deletedAt) return 'Deleted message';
+  return p.body ?? 'Attachment';
+}
+
 async function scrollToBottom() {
   await nextTick();
   const el = scroller.value;
@@ -40,6 +59,7 @@ async function scrollToBottom() {
 watch(
   () => props.conversation.id,
   (id) => {
+    messages.clearReplyTarget();
     messages.ensureLoaded(id);
     scrollToBottom();
   },
@@ -70,18 +90,44 @@ watch(() => items.value.length, scrollToBottom);
           :class="isMine(m.senderId) ? 'items-end' : 'items-start'"
         >
           <div
-            class="max-w-[75%] rounded-2xl px-3 py-2 text-sm"
-            :class="
-              isMine(m.senderId) ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
-            "
+            class="group flex items-center gap-1"
+            :class="isMine(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
           >
-            <p
-              v-if="conversation.isGroup && !isMine(m.senderId)"
-              class="mb-0.5 text-xs font-medium opacity-70"
+            <div
+              class="max-w-[75%] rounded-2xl px-3 py-2 text-sm transition-shadow"
+              :class="[
+                isMine(m.senderId)
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground',
+                messages.replyTarget?.id === m.id
+                  ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                  : '',
+              ]"
             >
-              {{ senderName(m.senderId) }}
-            </p>
-            <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
+              <p
+                v-if="conversation.isGroup && !isMine(m.senderId)"
+                class="mb-0.5 text-xs font-medium opacity-70"
+              >
+                {{ senderName(m.senderId) }}
+              </p>
+              <div
+                v-if="m.parentMessageId"
+                class="mb-1 rounded border-l-2 py-1 pl-2 pr-2 text-xs"
+                :class="
+                  isMine(m.senderId)
+                    ? 'border-primary-foreground/60 bg-primary-foreground/15'
+                    : 'border-foreground/30 bg-foreground/10'
+                "
+              >
+                <span class="font-medium">{{ parentSender(m) }}</span>
+                <span class="block truncate">{{ parentSnippet(m) }}</span>
+              </div>
+              <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
+            </div>
+            <MessageActions
+              class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+              @reply="messages.setReplyTarget(m)"
+            />
           </div>
           <span class="mt-0.5 px-1 text-[11px] text-muted-foreground">
             {{ formatTime(m.createdAt) }}
