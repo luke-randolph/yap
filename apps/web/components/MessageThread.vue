@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ConversationDTO } from "@yap/contracts";
-import type { ChatMessage } from "~/stores/messages";
+import type { ConversationDTO } from '@yap/contracts';
+import type { ChatMessage } from '~/stores/messages';
 
 const props = defineProps<{
   conversation: ConversationDTO;
@@ -21,15 +21,15 @@ const senderNames = computed(() => {
 });
 
 function senderName(senderId: string): string {
-  return senderNames.value.get(senderId) ?? "Unknown";
+  return senderNames.value.get(senderId) ?? 'Unknown';
 }
 
-function isMine(senderId: string): boolean {
+function isFromCurrentUser(senderId: string): boolean {
   return senderId === auth.user?.id;
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
 function parentOf(m: ChatMessage): ChatMessage | undefined {
@@ -39,20 +39,20 @@ function parentOf(m: ChatMessage): ChatMessage | undefined {
 
 function parentSender(m: ChatMessage): string {
   const p = parentOf(m);
-  if (!p) return "";
-  return isMine(p.senderId) ? "You" : senderName(p.senderId);
+  if (!p) return '';
+  return isFromCurrentUser(p.senderId) ? 'You' : senderName(p.senderId);
 }
 
 function parentSnippet(m: ChatMessage): string {
   const p = parentOf(m);
-  if (!p) return "Original message unavailable";
-  if (p.deletedAt) return "Deleted message";
-  return p.body ?? "Attachment";
+  if (!p) return 'Original message unavailable';
+  if (p.deletedAt) return 'Deleted message';
+  return p.body ?? 'Attachment';
 }
 
 // Toggle & replace: re-selecting your current emoji clears it, anything else replaces it.
 function toggleReaction(m: ChatMessage, emoji: string): void {
-  if (m.id.startsWith("temp-")) return;
+  if (m.id.startsWith('temp-')) return;
   if (messages.currentUserReaction(props.conversation.id, m.id) === emoji) {
     void messages.unreact(props.conversation.id, m.id);
   } else {
@@ -73,7 +73,7 @@ watch(
     messages.ensureLoaded(id);
     scrollToBottom();
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 watch(() => items.value.length, scrollToBottom);
@@ -88,10 +88,7 @@ watch(() => items.value.length, scrollToBottom);
       >
         Loading messages…
       </p>
-      <p
-        v-else-if="items.length === 0"
-        class="py-6 text-center text-sm text-muted-foreground"
-      >
+      <p v-else-if="items.length === 0" class="py-6 text-center text-sm text-muted-foreground">
         No messages yet. Say hello 👋
       </p>
 
@@ -100,32 +97,36 @@ watch(() => items.value.length, scrollToBottom);
           v-for="m in items"
           :key="m.clientMessageId ?? m.id"
           class="flex flex-col"
-          :class="isMine(m.senderId) ? 'items-end' : 'items-start'"
+          :class="isFromCurrentUser(m.senderId) ? 'items-end' : 'items-start'"
         >
           <div
             class="group flex items-center gap-1"
-            :class="isMine(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
+            :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
           >
             <div
-              class="max-w-[75%] rounded-2xl px-3 py-2 text-sm transition-shadow"
+              class="max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
               :class="[
-                isMine(m.senderId)
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground',
-                messages.replyTarget?.id === m.id ? 'shadow-lg shadow-primary/30' : '',
+                isFromCurrentUser(m.senderId)
+                  ? 'rounded-br-none bg-primary text-primary-foreground'
+                  : 'rounded-bl-none bg-muted text-foreground',
+                isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
+                  ? 'border-gray-800 dark:border-gray-400 shadow-[0_0_20px] shadow-gray-400'
+                  : messages.replyTarget?.id === m.id
+                    ? 'border-gray-400 dark:border-primary/50 shadow-[0_0_20px] shadow-primary/30'
+                    : 'border-transparent',
               ]"
             >
               <p
-                v-if="conversation.isGroup && !isMine(m.senderId)"
+                v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)"
                 class="mb-0.5 text-xs font-medium opacity-70"
               >
                 {{ senderName(m.senderId) }}
               </p>
               <div
                 v-if="m.parentMessageId"
-                class="mb-1 rounded border-l-2 py-1 pl-2 pr-2 text-xs"
+                class="mb-1 rounded-md border-l-2 py-1 pl-2 pr-2 text-xs"
                 :class="
-                  isMine(m.senderId)
+                  isFromCurrentUser(m.senderId)
                     ? 'border-primary-foreground/60 bg-primary-foreground/15'
                     : 'border-foreground/30 bg-foreground/10'
                 "
@@ -137,7 +138,7 @@ watch(() => items.value.length, scrollToBottom);
             </div>
             <MessageActions
               class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-              :align="isMine(m.senderId) ? 'right' : 'left'"
+              :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
               @reply="messages.setReplyTarget(m)"
               @react="toggleReaction(m, $event)"
             />

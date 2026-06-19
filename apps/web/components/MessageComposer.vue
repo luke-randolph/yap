@@ -36,12 +36,12 @@ async function send() {
   <form class="border-t border-border bg-card px-4 py-3" @submit.prevent="send">
     <div
       v-if="messages.replyTarget"
-      class="mb-2 flex items-center gap-2 rounded-md bg-violet-100 px-3 py-2 text-sm"
+      class="mb-2 flex items-center gap-2 rounded-md bg-accent px-3 py-2 text-sm text-accent-foreground"
     >
-      <Reply class="h-4 w-4 shrink-0 text-muted-foreground" />
+      <Reply class="h-4 w-4 shrink-0 text-accent-foreground/70" />
       <div class="min-w-0 flex-1">
         <p class="text-xs font-medium">Replying to {{ replyToName }}</p>
-        <p class="truncate text-xs text-muted-foreground">{{ replySnippet }}</p>
+        <p class="truncate text-xs text-accent-foreground/70">{{ replySnippet }}</p>
       </div>
       <button
         type="button"
