@@ -28,6 +28,13 @@ export const useMessagesStore = defineStore('messages', () => {
     return byConversation.value[conversationId]?.find((m) => m.id === id);
   }
 
+  function currentUserReaction(conversationId: string, messageId: string): string | undefined {
+    const userId = useAuthStore().user?.id;
+    if (!userId) return undefined;
+    const msg = messageById(conversationId, messageId);
+    return msg?.reactions.find((r) => r.userId === userId)?.emoji;
+  }
+
   function setReplyTarget(msg: ChatMessage): void {
     replyTarget.value = msg;
   }
@@ -128,6 +135,55 @@ export const useMessagesStore = defineStore('messages', () => {
     });
   }
 
+  // Set/replace the current user's reaction, optimistically; roll back on failure.
+  async function react(conversationId: string, messageId: string, emoji: string): Promise<void> {
+    const userId = useAuthStore().user?.id;
+    const msg = messageById(conversationId, messageId);
+    if (!userId || !msg) return;
+
+    const previous = msg.reactions;
+    msg.reactions = [
+      ...previous.filter((r) => r.userId !== userId),
+      { userId, emoji, createdAt: new Date().toISOString() },
+    ];
+
+    try {
+      const api = useApi();
+      const updated = await api<MessageDTO>(
+        `/conversations/${conversationId}/messages/${messageId}/reactions`,
+        { method: 'POST', body: { emoji } },
+      );
+      upsert(conversationId, { ...updated, status: 'sent' });
+    } catch {
+      msg.reactions = previous;
+    }
+  }
+
+  // Remove the current user's reaction, optimistically; roll back on failure.
+  async function unreact(conversationId: string, messageId: string): Promise<void> {
+    const userId = useAuthStore().user?.id;
+    const msg = messageById(conversationId, messageId);
+    if (!userId || !msg) return;
+
+    const previous = msg.reactions;
+    msg.reactions = previous.filter((r) => r.userId !== userId);
+
+    try {
+      const api = useApi();
+      const updated = await api<MessageDTO>(
+        `/conversations/${conversationId}/messages/${messageId}/reactions`,
+        { method: 'DELETE' },
+      );
+      upsert(conversationId, { ...updated, status: 'sent' });
+    } catch {
+      msg.reactions = previous;
+    }
+  }
+
+  function handleUpdated(payload: { conversationId: string; message: MessageDTO }): void {
+    upsert(payload.conversationId, { ...payload.message, status: 'sent' });
+  }
+
   function reset(): void {
     byConversation.value = {};
     loaded.value = {};
@@ -168,6 +224,7 @@ export const useMessagesStore = defineStore('messages', () => {
   return {
     list,
     messageById,
+    currentUserReaction,
     replyTarget,
     setReplyTarget,
     clearReplyTarget,
@@ -175,7 +232,10 @@ export const useMessagesStore = defineStore('messages', () => {
     ensureLoaded,
     fetchHistory,
     send,
+    react,
+    unreact,
     handleIncoming,
+    handleUpdated,
     reset,
   };
 });

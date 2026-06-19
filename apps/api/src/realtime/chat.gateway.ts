@@ -26,6 +26,7 @@ import {
   type ConversationCreatedEvent,
   type ConversationUpdatedEvent,
   type MessageCreatedEvent,
+  type MessageUpdatedEvent,
 } from './realtime.events';
 
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -136,6 +137,16 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       conversationId: event.message.conversationId,
       message: event.message,
       clientMessageId: event.clientMessageId,
+    });
+  }
+
+  @OnEvent(REALTIME_EVENTS.messageUpdated)
+  onMessageUpdated(event: MessageUpdatedEvent): void {
+    const rooms = event.participantUserIds.map(userRoom);
+    if (rooms.length === 0) return;
+    this.server.to(rooms).emit('message.updated', {
+      conversationId: event.message.conversationId,
+      message: event.message,
     });
   }
 

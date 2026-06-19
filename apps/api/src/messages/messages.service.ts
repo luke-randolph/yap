@@ -9,7 +9,11 @@ import {
 } from '@yap/contracts';
 import { ConversationsService } from '../conversations/conversations.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { REALTIME_EVENTS, type MessageCreatedEvent } from '../realtime/realtime.events';
+import {
+  REALTIME_EVENTS,
+  type MessageCreatedEvent,
+  type MessageUpdatedEvent,
+} from '../realtime/realtime.events';
 
 const messageInclude = {
   attachments: true,
@@ -124,6 +128,72 @@ export class MessagesService {
       clientMessageId: input.clientMessageId,
     };
     this.events.emit(REALTIME_EVENTS.messageCreated, event);
+    return dto;
+  }
+
+  async react(
+    userId: string,
+    conversationId: string,
+    messageId: string,
+    emoji: string,
+  ): Promise<MessageDTO> {
+    await this.conversations.assertParticipant(userId, conversationId);
+    await this.assertMessageInConversation(messageId, conversationId);
+
+    // One reaction per user per message: clear any existing one, then set the new.
+    await this.prisma.$transaction([
+      this.prisma.messageReaction.deleteMany({ where: { messageId, userId } }),
+      this.prisma.messageReaction.create({ data: { messageId, userId, emoji } }),
+    ]);
+
+    return this.emitMessageUpdate(conversationId, messageId);
+  }
+
+  async unreact(userId: string, conversationId: string, messageId: string): Promise<MessageDTO> {
+    await this.conversations.assertParticipant(userId, conversationId);
+    await this.assertMessageInConversation(messageId, conversationId);
+
+    await this.prisma.messageReaction.deleteMany({ where: { messageId, userId } });
+
+    return this.emitMessageUpdate(conversationId, messageId);
+  }
+
+  private async assertMessageInConversation(
+    messageId: string,
+    conversationId: string,
+  ): Promise<void> {
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, conversationId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!message) {
+      throw new BadRequestException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.messageNotFound,
+          message: 'Message not found in this conversation',
+        },
+      });
+    }
+  }
+
+  private async emitMessageUpdate(conversationId: string, messageId: string): Promise<MessageDTO> {
+    const [message, participants] = await Promise.all([
+      this.prisma.message.findUniqueOrThrow({
+        where: { id: messageId },
+        include: messageInclude,
+      }),
+      this.prisma.conversationParticipant.findMany({
+        where: { conversationId, leftAt: null },
+        select: { userId: true },
+      }),
+    ]);
+
+    const dto = toMessageDto(message);
+    const event: MessageUpdatedEvent = {
+      message: dto,
+      participantUserIds: participants.map((p) => p.userId),
+    };
+    this.events.emit(REALTIME_EVENTS.messageUpdated, event);
     return dto;
   }
 
