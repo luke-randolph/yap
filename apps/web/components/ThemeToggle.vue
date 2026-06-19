@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Sun, Moon, Monitor } from "lucide-vue-next";
+import { Sun, Moon, Monitor } from 'lucide-vue-next';
 
 const colorMode = useColorMode();
-const order = ["system", "light", "dark"];
+const order = ['system', 'light', 'dark'];
 
 function cycle() {
   const i = order.indexOf(colorMode.preference);
-  colorMode.preference = order[(i + 1) % order.length] ?? "system";
+  colorMode.preference = order[(i + 1) % order.length] ?? 'system';
 }
 </script>
 

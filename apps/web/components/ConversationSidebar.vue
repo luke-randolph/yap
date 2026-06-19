@@ -11,7 +11,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [id: string];
-  newChat: [];
+  newConversation: [];
 }>();
 
 function lastActivity(conv: ConversationDTO): string {
@@ -25,8 +25,8 @@ function lastActivity(conv: ConversationDTO): string {
 }
 
 function subline(conv: ConversationDTO): string {
-  if (!conv.isGroup) return conv.participants
-    .find((p) => p.user.id !== props.currentUserId)?.user.email ?? '';
+  if (!conv.isGroup)
+    return conv.participants.find((p) => p.user.id !== props.currentUserId)?.user.email ?? '';
   return `${conv.participants.length} members`;
 }
 </script>
@@ -39,14 +39,17 @@ function subline(conv: ConversationDTO): string {
         type="button"
         class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         title="New chat"
-        @click="emit('newChat')"
+        @click="emit('newConversation')"
       >
         <Plus class="h-4 w-4" />
       </button>
     </div>
 
     <div class="flex-1 overflow-y-auto">
-      <p v-if="loading && conversations.length === 0" class="px-4 py-6 text-sm text-muted-foreground">
+      <p
+        v-if="loading && conversations.length === 0"
+        class="px-4 py-6 text-sm text-muted-foreground"
+      >
         Loading…
       </p>
       <p v-else-if="conversations.length === 0" class="px-4 py-6 text-sm text-muted-foreground">

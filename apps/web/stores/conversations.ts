@@ -11,9 +11,7 @@ export const useConversationsStore = defineStore('conversations', () => {
   const loaded = ref(false);
   const loading = ref(false);
 
-  const selected = computed(
-    () => list.value.find((c) => c.id === selectedId.value) ?? null,
-  );
+  const selected = computed(() => list.value.find((c) => c.id === selectedId.value) ?? null);
 
   async function fetchAll() {
     if (loading.value) return;

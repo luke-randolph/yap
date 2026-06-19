@@ -1,0 +1,12 @@
+# Dependencies
+node_modules
+
+# Build / generated output
+dist
+.output
+.nuxt
+.turbo
+coverage
+
+# Lockfiles
+pnpm-lock.yaml
