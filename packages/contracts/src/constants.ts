@@ -7,4 +7,5 @@ export const VALIDATION_LIMITS = {
   maxMessageBodyLength: 4000,
   maxConversationNameLength: 80,
   maxGroupParticipants: 50,
+  maxReactionEmojiLength: 32,
 } as const;

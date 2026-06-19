@@ -36,7 +36,7 @@ async function send() {
   <form class="border-t border-border bg-card px-4 py-3" @submit.prevent="send">
     <div
       v-if="messages.replyTarget"
-      class="mb-2 flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm"
+      class="mb-2 flex items-center gap-2 rounded-md bg-violet-100 px-3 py-2 text-sm"
     >
       <Reply class="h-4 w-4 shrink-0 text-muted-foreground" />
       <div class="min-w-0 flex-1">

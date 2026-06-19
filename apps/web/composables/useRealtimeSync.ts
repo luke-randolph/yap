@@ -19,6 +19,10 @@ export function useRealtimeSync(): void {
     conversations.addOrReplace(payload.conversation);
   }
 
+  function onMessageUpdated(payload: { conversationId: string; message: MessageDTO }) {
+    messages.handleUpdated(payload);
+  }
+
   function onMessageCreated(payload: {
     conversationId: string;
     message: MessageDTO;
@@ -43,6 +47,7 @@ export function useRealtimeSync(): void {
     sock.on('conversation.created', onConversationCreated);
     sock.on('conversation.updated', onConversationUpdated);
     sock.on('message.created', onMessageCreated);
+    sock.on('message.updated', onMessageUpdated);
   });
 
   onBeforeUnmount(() => {
@@ -50,5 +55,6 @@ export function useRealtimeSync(): void {
     sock?.off('conversation.created', onConversationCreated);
     sock?.off('conversation.updated', onConversationUpdated);
     sock?.off('message.created', onMessageCreated);
+    sock?.off('message.updated', onMessageUpdated);
   });
 }

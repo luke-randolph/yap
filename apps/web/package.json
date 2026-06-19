@@ -25,7 +25,8 @@
     "socket.io-client": "^4.8.3",
     "tailwindcss": "^4.2.4",
     "vue": "^3.5.33",
-    "vue-router": "^5.0.6"
+    "vue-router": "^5.0.6",
+    "vue3-emoji-picker": "^1.1.8"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.0.0",

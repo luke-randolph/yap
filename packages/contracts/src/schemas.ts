@@ -40,6 +40,7 @@ export const CONVERSATION_ERROR_CODES = {
   notParticipant: 'NOT_PARTICIPANT',
   notGroupConversation: 'NOT_GROUP_CONVERSATION',
   parentMessageNotFound: 'PARENT_MESSAGE_NOT_FOUND',
+  messageNotFound: 'MESSAGE_NOT_FOUND',
 } as const;
 
 export const createConversationSchema = z
@@ -69,6 +70,11 @@ export const socketSendMessageSchema = sendMessageSchema.extend({
   conversationId: z.string().cuid(),
 });
 export type SocketSendMessageInput = z.infer<typeof socketSendMessageSchema>;
+
+export const reactMessageSchema = z.object({
+  emoji: z.string().trim().min(1).max(VALIDATION_LIMITS.maxReactionEmojiLength),
+});
+export type ReactMessageInput = z.infer<typeof reactMessageSchema>;
 
 export const messagesQuerySchema = z.object({
   before: z.string().cuid().optional(),

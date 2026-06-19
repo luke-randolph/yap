@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ConversationDTO } from '@yap/contracts';
-import type { ChatMessage } from '~/stores/messages';
+import type { ConversationDTO } from "@yap/contracts";
+import type { ChatMessage } from "~/stores/messages";
 
 const props = defineProps<{
   conversation: ConversationDTO;
@@ -21,7 +21,7 @@ const senderNames = computed(() => {
 });
 
 function senderName(senderId: string): string {
-  return senderNames.value.get(senderId) ?? 'Unknown';
+  return senderNames.value.get(senderId) ?? "Unknown";
 }
 
 function isMine(senderId: string): boolean {
@@ -29,7 +29,7 @@ function isMine(senderId: string): boolean {
 }
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
 function parentOf(m: ChatMessage): ChatMessage | undefined {
@@ -39,15 +39,25 @@ function parentOf(m: ChatMessage): ChatMessage | undefined {
 
 function parentSender(m: ChatMessage): string {
   const p = parentOf(m);
-  if (!p) return '';
-  return isMine(p.senderId) ? 'You' : senderName(p.senderId);
+  if (!p) return "";
+  return isMine(p.senderId) ? "You" : senderName(p.senderId);
 }
 
 function parentSnippet(m: ChatMessage): string {
   const p = parentOf(m);
-  if (!p) return 'Original message unavailable';
-  if (p.deletedAt) return 'Deleted message';
-  return p.body ?? 'Attachment';
+  if (!p) return "Original message unavailable";
+  if (p.deletedAt) return "Deleted message";
+  return p.body ?? "Attachment";
+}
+
+// Toggle & replace: re-selecting your current emoji clears it, anything else replaces it.
+function toggleReaction(m: ChatMessage, emoji: string): void {
+  if (m.id.startsWith("temp-")) return;
+  if (messages.currentUserReaction(props.conversation.id, m.id) === emoji) {
+    void messages.unreact(props.conversation.id, m.id);
+  } else {
+    void messages.react(props.conversation.id, m.id, emoji);
+  }
 }
 
 async function scrollToBottom() {
@@ -63,7 +73,7 @@ watch(
     messages.ensureLoaded(id);
     scrollToBottom();
   },
-  { immediate: true },
+  { immediate: true }
 );
 
 watch(() => items.value.length, scrollToBottom);
@@ -78,7 +88,10 @@ watch(() => items.value.length, scrollToBottom);
       >
         Loading messages…
       </p>
-      <p v-else-if="items.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+      <p
+        v-else-if="items.length === 0"
+        class="py-6 text-center text-sm text-muted-foreground"
+      >
         No messages yet. Say hello 👋
       </p>
 
@@ -99,9 +112,7 @@ watch(() => items.value.length, scrollToBottom);
                 isMine(m.senderId)
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-foreground',
-                messages.replyTarget?.id === m.id
-                  ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
-                  : '',
+                messages.replyTarget?.id === m.id ? 'shadow-lg shadow-primary/30' : '',
               ]"
             >
               <p
@@ -126,10 +137,16 @@ watch(() => items.value.length, scrollToBottom);
             </div>
             <MessageActions
               class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+              :align="isMine(m.senderId) ? 'right' : 'left'"
               @reply="messages.setReplyTarget(m)"
+              @react="toggleReaction(m, $event)"
             />
           </div>
-          <span class="mt-0.5 px-1 text-[11px] text-muted-foreground">
+          <MessageReactions :reactions="m.reactions" @toggle="toggleReaction(m, $event)" />
+          <span
+            class="px-1 text-xs text-muted-foreground"
+            :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"
+          >
             {{ formatTime(m.createdAt) }}
             <template v-if="m.status === 'sending'"> · Sending…</template>
             <template v-else-if="m.status === 'failed'"> · Failed to send</template>

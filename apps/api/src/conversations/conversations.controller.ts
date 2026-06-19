@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -14,10 +15,12 @@ import {
   type CreateConversationInput,
   type MessageDTO,
   type MessagesQueryInput,
+  type ReactMessageInput,
   type SendMessageInput,
   type UpdateConversationInput,
   createConversationSchema,
   messagesQuerySchema,
+  reactMessageSchema,
   sendMessageSchema,
   updateConversationSchema,
 } from '@yap/contracts';
@@ -90,5 +93,24 @@ export class ConversationsController {
     @Body(new ZodValidationPipe(sendMessageSchema)) body: SendMessageInput,
   ): Promise<MessageDTO> {
     return this.messages.create(current.sub, conversationId, body);
+  }
+
+  @Post(':conversationId/messages/:messageId/reactions')
+  async react(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+    @Body(new ZodValidationPipe(reactMessageSchema)) body: ReactMessageInput,
+  ): Promise<MessageDTO> {
+    return this.messages.react(current.sub, conversationId, messageId, body.emoji);
+  }
+
+  @Delete(':conversationId/messages/:messageId/reactions')
+  async unreact(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+  ): Promise<MessageDTO> {
+    return this.messages.unreact(current.sub, conversationId, messageId);
   }
 }
