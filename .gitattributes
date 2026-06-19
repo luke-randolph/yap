@@ -1,0 +1,13 @@
+# Normalize line endings: store LF in the repo, let Git convert in each
+# working tree per platform. Pairs with Prettier's `endOfLine: "auto"`.
+* text=auto
+
+# Treat common binary assets as binary (never normalize or diff as text).
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.woff  binary
+*.woff2 binary

@@ -7,8 +7,10 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "lint:fix": "turbo lint:fix",
     "typecheck": "turbo typecheck",
-    "format": "prettier --write \"**/*.{ts,tsx,vue,js,json,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,vue,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,vue,js,json,md}\""
   },
   "devDependencies": {
     "prettier": "^3.4.2",

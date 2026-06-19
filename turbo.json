@@ -12,7 +12,15 @@
       "dependsOn": ["^build"]
     },
     "lint": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/eslint-config/*.js",
+        "$TURBO_ROOT$/packages/eslint-config/package.json"
+      ],
       "outputs": []
+    },
+    "lint:fix": {
+      "cache": false
     },
     "typecheck": {
       "dependsOn": ["^build"],
