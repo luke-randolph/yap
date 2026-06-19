@@ -26,6 +26,12 @@ const conversationInclude = {
     where: { leftAt: null },
     include: { user: { select: userPublicSelect } },
   },
+  messages: {
+    where: { deletedAt: null },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: 1,
+    select: { id: true, senderId: true },
+  },
 } satisfies Prisma.ConversationInclude;
 
 type ConversationWithParticipants = Prisma.ConversationGetPayload<{
@@ -201,6 +207,20 @@ export class ConversationsService {
     return { actorDto, byUserId };
   }
 
+  async markRead(currentUserId: string, conversationId: string): Promise<void> {
+    await this.assertParticipant(currentUserId, conversationId);
+    const latest = await this.prisma.message.findFirst({
+      where: { conversationId, deletedAt: null },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true },
+    });
+    if (!latest) return;
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+      data: { lastReadMessageId: latest.id },
+    });
+  }
+
   private toDto(row: ConversationWithParticipants, currentUserId: string): ConversationDTO {
     const participants: ParticipantDTO[] = row.participants.map((p) => ({
       user: p.user,
@@ -210,6 +230,13 @@ export class ConversationsService {
       isAdmin: p.isAdmin,
     }));
 
+    const latestMessage = row.messages[0];
+    const me = row.participants.find((p) => p.userId === currentUserId);
+    const hasUnreadMessages =
+      !!latestMessage &&
+      latestMessage.senderId !== currentUserId &&
+      latestMessage.id !== me?.lastReadMessageId;
+
     return {
       id: row.id,
       isGroup: row.isGroup,
@@ -218,6 +245,7 @@ export class ConversationsService {
       participants,
       lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
+      hasUnreadMessages,
     };
   }
 }

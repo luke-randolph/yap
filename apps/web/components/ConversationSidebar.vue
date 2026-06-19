@@ -63,8 +63,15 @@ function subline(conv: ConversationDTO): string {
             :class="conv.id === selectedId ? 'bg-accent text-accent-foreground' : ''"
             @click="emit('select', conv.id)"
           >
-            <div class="flex items-baseline justify-between gap-2">
-              <span class="truncate text-sm font-medium">{{ conv.displayName }}</span>
+            <div class="flex items-center justify-between gap-2">
+              <span class="flex min-w-0 items-center gap-1.5">
+                <span class="truncate text-sm font-medium">{{ conv.displayName }}</span>
+                <span
+                  v-if="conv.hasUnreadMessages"
+                  class="h-2 w-2 shrink-0 rounded-full bg-[#A78BFA]"
+                  title="New message"
+                />
+              </span>
               <span class="shrink-0 text-xs text-muted-foreground">{{ lastActivity(conv) }}</span>
             </div>
             <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ subline(conv) }}</p>

@@ -7,6 +7,7 @@ import type { ConversationDTO, MessageDTO } from '@yap/contracts';
  */
 export function useRealtimeSync(): void {
   const socket = useSocket();
+  const auth = useAuthStore();
   const conversations = useConversationsStore();
   const messages = useMessagesStore();
 
@@ -25,6 +26,15 @@ export function useRealtimeSync(): void {
   }) {
     messages.handleIncoming(payload);
     conversations.markActivity(payload.conversationId, payload.message.createdAt);
+    if (payload.message.senderId !== auth.user?.id) {
+      if (payload.conversationId === conversations.selectedId) {
+        // Seen live in the open conversation — advance the read marker so it
+        // stays read across reloads.
+        void conversations.markRead(payload.conversationId);
+      } else {
+        conversations.markUnread(payload.conversationId);
+      }
+    }
   }
 
   onMounted(() => {
