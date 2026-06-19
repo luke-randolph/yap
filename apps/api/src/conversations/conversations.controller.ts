@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   type ConversationDTO,
   type CreateConversationInput,
@@ -53,6 +63,15 @@ export class ConversationsController {
     @Param('conversationId') conversationId: string,
   ): Promise<ConversationDTO> {
     return this.conversations.findById(current.sub, conversationId);
+  }
+
+  @Post(':conversationId/markRead')
+  @HttpCode(204)
+  async markRead(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<void> {
+    await this.conversations.markRead(current.sub, conversationId);
   }
 
   @Get(':conversationId/messages')

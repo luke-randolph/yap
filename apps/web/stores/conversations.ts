@@ -64,8 +64,26 @@ export const useConversationsStore = defineStore('conversations', () => {
     return conv;
   }
 
+  function markUnread(conversationId: string) {
+    if (conversationId === selectedId.value) return;
+    const conv = list.value.find((c) => c.id === conversationId);
+    if (conv) conv.hasUnreadMessages = true;
+  }
+
+  async function markRead(conversationId: string) {
+    const conv = list.value.find((c) => c.id === conversationId);
+    if (conv) conv.hasUnreadMessages = false;
+    try {
+      const api = useApi();
+      await api(`/conversations/${conversationId}/markRead`, { method: 'POST' });
+    } catch {
+      // Best-effort; the flag re-derives from the server on next load.
+    }
+  }
+
   function select(id: string | null) {
     selectedId.value = id;
+    if (id) void markRead(id);
   }
 
   function reset() {
@@ -83,6 +101,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     fetchAll,
     addOrReplace,
     markActivity,
+    markUnread,
+    markRead,
     create,
     update,
     select,

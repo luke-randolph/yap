@@ -21,6 +21,7 @@ export interface ConversationDTO {
   participants: ParticipantDTO[];
   lastActivityAt: string | null;
   createdAt: string;
+  hasUnreadMessages: boolean;
 }
 
 export interface MessageDTO {
