@@ -55,6 +55,7 @@ async function handleLogout() {
         :current-user-id="auth.user?.id ?? null"
         @select="conversations.select"
         @new-conversation="showNewConversation = true"
+        @toggle-star="conversations.toggleStar"
       />
 
       <main class="flex min-h-0 flex-1 flex-col">

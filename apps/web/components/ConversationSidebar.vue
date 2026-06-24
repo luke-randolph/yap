@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus } from 'lucide-vue-next';
+import { Plus, Star } from 'lucide-vue-next';
 import type { ConversationDTO } from '@yap/contracts';
 
 const props = defineProps<{
@@ -12,6 +12,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: [id: string];
   newConversation: [];
+  toggleStar: [id: string];
 }>();
 
 function lastActivity(conv: ConversationDTO): string {
@@ -56,10 +57,10 @@ function subline(conv: ConversationDTO): string {
         No chats yet. Tap <span class="font-medium text-foreground">+</span> to start one.
       </p>
       <ul v-else class="divide-y divide-border">
-        <li v-for="conv in conversations" :key="conv.id">
+        <li v-for="conv in conversations" :key="conv.id" class="group relative">
           <button
             type="button"
-            class="block w-full px-4 py-3 text-left transition-colors hover:bg-muted"
+            class="block w-full py-3 pr-10 pl-4 text-left transition-colors hover:bg-muted"
             :class="conv.id === selectedId ? 'bg-accent text-accent-foreground' : ''"
             @click="emit('select', conv.id)"
           >
@@ -75,6 +76,29 @@ function subline(conv: ConversationDTO): string {
               <span class="shrink-0 text-xs text-muted-foreground">{{ lastActivity(conv) }}</span>
             </div>
             <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ subline(conv) }}</p>
+          </button>
+          <button
+            type="button"
+            :aria-label="conv.isStarred ? 'Unstar conversation' : 'Star conversation'"
+            :title="conv.isStarred ? 'Unstar conversation' : 'Star conversation'"
+            class="group/star absolute top-3 right-2 rounded p-1"
+            :class="
+              conv.isStarred
+                ? 'opacity-100'
+                : 'opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100'
+            "
+            @click="emit('toggleStar', conv.id)"
+          >
+            <Star
+              :size="16"
+              :stroke-width="1.75"
+              class="transition"
+              :class="
+                conv.isStarred
+                  ? 'fill-[#F5D27A] text-[#3D2E0A] group-hover/star:opacity-60'
+                  : 'fill-transparent text-muted-foreground group-hover/star:fill-muted-foreground'
+              "
+            />
           </button>
         </li>
       </ul>

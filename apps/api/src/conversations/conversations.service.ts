@@ -140,7 +140,17 @@ export class ConversationsService {
       include: conversationInclude,
       orderBy: [{ lastActivityAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
-    return rows.map((row) => this.toDto(row, currentUserId));
+    return rows
+      .map((row) => this.toDto(row, currentUserId))
+      .sort((a, b) => Number(b.isStarred) - Number(a.isStarred));
+  }
+
+  async setStarred(currentUserId: string, conversationId: string, starred: boolean): Promise<void> {
+    await this.assertParticipant(currentUserId, conversationId);
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+      data: { isStarred: starred },
+    });
   }
 
   async findById(currentUserId: string, conversationId: string): Promise<ConversationDTO> {
@@ -231,11 +241,11 @@ export class ConversationsService {
     }));
 
     const latestMessage = row.messages[0];
-    const me = row.participants.find((p) => p.userId === currentUserId);
+    const currentParticipant = row.participants.find((p) => p.userId === currentUserId);
     const hasUnreadMessages =
       !!latestMessage &&
       latestMessage.senderId !== currentUserId &&
-      latestMessage.id !== me?.lastReadMessageId;
+      latestMessage.id !== currentParticipant?.lastReadMessageId;
 
     return {
       id: row.id,
@@ -246,6 +256,7 @@ export class ConversationsService {
       lastActivityAt: row.lastActivityAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
       hasUnreadMessages,
+      isStarred: currentParticipant?.isStarred ?? false,
     };
   }
 }
