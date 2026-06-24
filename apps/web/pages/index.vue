@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { Menu } from 'lucide-vue-next';
 import type { ConversationDTO } from '@yap/contracts';
 
 const auth = useAuthStore();
 const conversations = useConversationsStore();
 const messages = useMessagesStore();
 const socket = useSocket();
+const sidebar = useSidebarStore();
 
 const showNewConversation = ref(false);
 
@@ -17,6 +19,7 @@ onMounted(async () => {
 function onCreated(conv: ConversationDTO) {
   conversations.select(conv.id);
   showNewConversation.value = false;
+  sidebar.close();
 }
 
 async function handleLogout() {
@@ -47,7 +50,7 @@ async function handleLogout() {
       </div>
     </header>
 
-    <div class="flex min-h-0 flex-1">
+    <div class="relative flex min-h-0 flex-1 overflow-hidden">
       <ConversationSidebar
         :conversations="conversations.list"
         :selected-id="conversations.selectedId"
@@ -59,11 +62,23 @@ async function handleLogout() {
       />
 
       <main class="flex min-h-0 flex-1 flex-col">
-        <div
-          v-if="!conversations.selected"
-          class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
-        >
-          <p>Select a chat or start a new one.</p>
+        <div v-if="!conversations.selected" class="flex min-h-0 flex-1 flex-col">
+          <div class="flex items-center border-b border-border bg-card px-4 py-3 md:hidden">
+            <button
+              type="button"
+              class="-ml-1 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Show chats"
+              aria-label="Show chats"
+              aria-controls="conversation-sidebar"
+              :aria-expanded="sidebar.isOpen"
+              @click="sidebar.toggle"
+            >
+              <Menu class="h-5 w-5" />
+            </button>
+          </div>
+          <div class="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+            <p>Select a chat or start a new one.</p>
+          </div>
         </div>
         <div v-else class="flex min-h-0 flex-1 flex-col">
           <ConversationHeader :conversation="conversations.selected" />

@@ -46,13 +46,13 @@ export class ConversationsService {
   ) {}
 
   async create(currentUserId: string, input: CreateConversationInput): Promise<ConversationDTO> {
-    const me = await this.prisma.user.findUniqueOrThrow({
+    const currentUser = await this.prisma.user.findUniqueOrThrow({
       where: { id: currentUserId },
       select: { id: true, email: true },
     });
 
     const dedupedEmails = Array.from(new Set(input.participantEmails));
-    const otherEmails = dedupedEmails.filter((email) => email !== me.email);
+    const otherEmails = dedupedEmails.filter((email) => email !== currentUser.email);
     if (otherEmails.length === 0) {
       throw new BadRequestException(unknownEmailsError(['(no recipients)']));
     }
@@ -79,7 +79,7 @@ export class ConversationsService {
         name: isGroup ? (input.name ?? null) : null,
         createdById: currentUserId,
         participants: {
-          create: [me.id, ...otherIds].map((userId) => ({
+          create: [currentUser.id, ...otherIds].map((userId) => ({
             userId,
             isAdmin: isGroup && userId === currentUserId,
           })),
