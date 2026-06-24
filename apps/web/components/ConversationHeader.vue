@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Pencil, X } from 'lucide-vue-next';
+import { Check, Menu, Pencil, X } from 'lucide-vue-next';
 import { getApiError, type ConversationDTO } from '@yap/contracts';
 
 const props = defineProps<{
@@ -7,6 +7,7 @@ const props = defineProps<{
 }>();
 
 const conversations = useConversationsStore();
+const sidebar = useSidebarStore();
 
 const editingName = ref(false);
 const nameDraft = ref('');
@@ -78,6 +79,17 @@ async function saveName() {
       </button>
     </div>
     <div v-else class="flex items-center gap-2">
+      <button
+        type="button"
+        class="-ml-1 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
+        title="Show chats"
+        aria-label="Show chats"
+        aria-controls="conversation-sidebar"
+        :aria-expanded="sidebar.isOpen"
+        @click="sidebar.toggle"
+      >
+        <Menu class="h-5 w-5" />
+      </button>
       <h2 class="text-base font-medium">{{ conversation.displayName }}</h2>
       <button
         v-if="conversation.isGroup"
