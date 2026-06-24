@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Reply, SendHorizontal, X } from 'lucide-vue-next';
+import { Reply, SendHorizontal, Smile, X } from 'lucide-vue-next';
+import { onClickOutside, onKeyStroke } from '@vueuse/core';
 import { VALIDATION_LIMITS } from '@yap/contracts';
 
 const props = defineProps<{
@@ -9,8 +10,44 @@ const props = defineProps<{
 const messages = useMessagesStore();
 const conversations = useConversationsStore();
 const auth = useAuthStore();
+const colorMode = useColorMode();
+const pickerTheme = computed<'light' | 'dark'>(() =>
+  colorMode.value === 'dark' ? 'dark' : 'light',
+);
 
 const draft = ref('');
+
+const EmojiPicker = defineAsyncComponent(async () => {
+  await import('vue3-emoji-picker/css');
+  return (await import('vue3-emoji-picker')).default;
+});
+
+const textarea = ref<HTMLTextAreaElement | null>(null);
+const emojiRoot = ref<HTMLElement | null>(null);
+const emojiOpen = ref(false);
+
+onClickOutside(emojiRoot, () => {
+  emojiOpen.value = false;
+});
+
+onKeyStroke('Escape', () => {
+  if (emojiOpen.value) emojiOpen.value = false;
+});
+
+function insertEmoji(emoji: { i: string }) {
+  const char = emoji.i;
+  const el = textarea.value;
+  const start = el?.selectionStart ?? draft.value.length;
+  const end = el?.selectionEnd ?? draft.value.length;
+  const next = draft.value.slice(0, start) + char + draft.value.slice(end);
+  if (next.length > VALIDATION_LIMITS.maxMessageBodyLength) return;
+  draft.value = next;
+  nextTick(() => {
+    const pos = start + char.length;
+    el?.focus();
+    el?.setSelectionRange(pos, pos);
+  });
+}
 
 const replyToName = computed(() => {
   const target = messages.replyTarget;
@@ -53,7 +90,40 @@ async function send() {
       </button>
     </div>
     <div class="flex items-end gap-2">
+      <div ref="emojiRoot" class="relative">
+        <button
+          type="button"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="Emoji"
+          @click="emojiOpen = !emojiOpen"
+        >
+          <Smile class="h-4 w-4" />
+        </button>
+
+        <div
+          v-if="emojiOpen"
+          class="absolute bottom-full left-0 z-10 mb-2 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+        >
+          <div class="flex items-center justify-end px-2 py-1">
+            <button
+              type="button"
+              class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Close"
+              @click="emojiOpen = false"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+          <EmojiPicker
+            :native="true"
+            :display-recent="true"
+            :theme="pickerTheme"
+            @select="insertEmoji"
+          />
+        </div>
+      </div>
       <textarea
+        ref="textarea"
         v-model="draft"
         rows="1"
         :maxlength="VALIDATION_LIMITS.maxMessageBodyLength"

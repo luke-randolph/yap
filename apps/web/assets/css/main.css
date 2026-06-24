@@ -65,3 +65,9 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* Match the light-mode emoji picker surface to the app palette (dark mode keeps the package default). */
+.v3-emoji-picker.v3-color-theme-light {
+  --v3-picker-bg: var(--card);
+  --v3-picker-input-bg: var(--background);
+}

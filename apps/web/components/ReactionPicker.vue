@@ -11,6 +11,9 @@ const EmojiPicker = defineAsyncComponent(async () => {
 
 const emit = defineEmits<{ select: [emoji: string] }>();
 
+const colorMode = useColorMode();
+const pickerTheme = computed<'light' | 'dark'>(() => (colorMode.value === 'dark' ? 'dark' : 'light'));
+
 const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLElement | null>(null);
 const open = ref(false);
@@ -60,7 +63,7 @@ function onSelect(emoji: { i: string }) {
         align === 'right' ? 'right-0' : 'left-0',
       ]"
     >
-      <EmojiPicker :native="true" :display-recent="true" theme="auto" @select="onSelect" />
+      <EmojiPicker :native="true" :display-recent="true" :theme="pickerTheme" @select="onSelect" />
     </div>
   </div>
 </template>
