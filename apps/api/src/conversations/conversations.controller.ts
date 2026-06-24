@@ -77,6 +77,24 @@ export class ConversationsController {
     await this.conversations.markRead(current.sub, conversationId);
   }
 
+  @Post(':conversationId/star')
+  @HttpCode(204)
+  async star(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<void> {
+    await this.conversations.setStarred(current.sub, conversationId, true);
+  }
+
+  @Delete(':conversationId/star')
+  @HttpCode(204)
+  async unstar(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<void> {
+    await this.conversations.setStarred(current.sub, conversationId, false);
+  }
+
   @Get(':conversationId/messages')
   async listMessages(
     @CurrentUser() current: AccessTokenPayload,

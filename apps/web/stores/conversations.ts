@@ -81,6 +81,23 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  async function toggleStar(conversationId: string) {
+    const conv = list.value.find((c) => c.id === conversationId);
+    if (!conv) return;
+    const starred = !conv.isStarred;
+    conv.isStarred = starred;
+    list.value.sort(sortConversations);
+    try {
+      const api = useApi();
+      await api(`/conversations/${conversationId}/star`, {
+        method: starred ? 'POST' : 'DELETE',
+      });
+    } catch {
+      conv.isStarred = !starred;
+      list.value.sort(sortConversations);
+    }
+  }
+
   function select(id: string | null) {
     selectedId.value = id;
     if (id) void markRead(id);
@@ -103,6 +120,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     markActivity,
     markUnread,
     markRead,
+    toggleStar,
     create,
     update,
     select,
@@ -111,6 +129,7 @@ export const useConversationsStore = defineStore('conversations', () => {
 });
 
 function sortConversations(a: ConversationDTO, b: ConversationDTO): number {
+  if (a.isStarred !== b.isStarred) return a.isStarred ? -1 : 1;
   const at = a.lastActivityAt ? Date.parse(a.lastActivityAt) : -Infinity;
   const bt = b.lastActivityAt ? Date.parse(b.lastActivityAt) : -Infinity;
   if (at !== bt) return bt - at;

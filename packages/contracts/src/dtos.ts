@@ -22,6 +22,7 @@ export interface ConversationDTO {
   lastActivityAt: string | null;
   createdAt: string;
   hasUnreadMessages: boolean;
+  isStarred: boolean;
 }
 
 export interface MessageDTO {
