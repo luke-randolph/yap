@@ -1,6 +1,6 @@
 export interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  body?: Record<string, unknown> | string;
+  body?: Record<string, unknown> | FormData | string;
   headers?: HeadersInit;
   query?: Record<string, string | number | boolean | null | undefined>;
 }

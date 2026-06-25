@@ -9,6 +9,7 @@ const socket = useSocket();
 const sidebar = useSidebarStore();
 
 const showNewConversation = ref(false);
+const showProfileSettings = ref(false);
 
 useRealtimeSync();
 
@@ -36,9 +37,15 @@ async function handleLogout() {
     <header class="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
       <h1 class="text-base font-semibold tracking-tight">Yap</h1>
       <div class="flex items-center gap-3">
-        <span class="hidden text-sm text-muted-foreground sm:inline">
-          {{ auth.user?.displayName }}
-        </span>
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-full p-0.5 pr-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Profile photo"
+          @click="showProfileSettings = true"
+        >
+          <UserAvatar :name="auth.user?.displayName ?? ''" :src="auth.user?.avatarUrl" :size="28" />
+          <span class="hidden sm:inline">{{ auth.user?.displayName }}</span>
+        </button>
         <ThemeToggle />
         <button
           type="button"
@@ -92,6 +99,8 @@ async function handleLogout() {
       @close="showNewConversation = false"
       @created="onCreated"
     />
+
+    <ProfileSettingsModal v-if="showProfileSettings" @close="showProfileSettings = false" />
 
     <DisplayNamePrompt v-if="auth.needsDisplayName" />
   </div>

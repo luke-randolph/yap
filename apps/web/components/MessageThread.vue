@@ -14,18 +14,26 @@ const scroller = ref<HTMLElement | null>(null);
 const items = computed(() => messages.list(props.conversation.id));
 const loading = computed(() => messages.isLoading(props.conversation.id));
 
-const senderNames = computed(() => {
-  const map = new Map<string, string>();
-  for (const p of props.conversation.participants) map.set(p.user.id, p.user.displayName);
+const senderById = computed(() => {
+  const map = new Map<string, ConversationDTO['participants'][number]['user']>();
+  for (const p of props.conversation.participants) map.set(p.user.id, p.user);
   return map;
 });
 
 function senderName(senderId: string): string {
-  return senderNames.value.get(senderId) ?? 'Unknown';
+  return senderById.value.get(senderId)?.displayName ?? 'Unknown';
+}
+
+function senderAvatar(senderId: string): string | null {
+  return senderById.value.get(senderId)?.avatarUrl ?? null;
 }
 
 function isFromCurrentUser(senderId: string): boolean {
   return senderId === auth.user?.id;
+}
+
+function isFirstInMessageRun(index: number): boolean {
+  return index === 0 || items.value[index - 1]?.senderId !== items.value[index]?.senderId;
 }
 
 function formatTime(iso: string): string {
@@ -94,7 +102,7 @@ watch(() => items.value.length, scrollToBottom);
 
       <ul v-else class="flex flex-col gap-2">
         <li
-          v-for="m in items"
+          v-for="(m, i) in items"
           :key="m.clientMessageId ?? m.id"
           class="flex flex-col"
           :class="isFromCurrentUser(m.senderId) ? 'items-end' : 'items-start'"
@@ -103,6 +111,16 @@ watch(() => items.value.length, scrollToBottom);
             class="group flex items-center gap-1"
             :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
           >
+            <template v-if="!isFromCurrentUser(m.senderId)">
+              <UserAvatar
+                v-if="isFirstInMessageRun(i)"
+                :name="senderName(m.senderId)"
+                :src="senderAvatar(m.senderId)"
+                :size="28"
+                class="self-end"
+              />
+              <span v-else class="w-7 shrink-0" aria-hidden="true" />
+            </template>
             <div
               class="max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
               :class="[
@@ -117,7 +135,7 @@ watch(() => items.value.length, scrollToBottom);
               ]"
             >
               <p
-                v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)"
+                v-if="conversation.isGroup && !isFromCurrentUser(m.senderId) && isFirstInMessageRun(i)"
                 class="mb-0.5 text-xs font-medium opacity-70"
               >
                 {{ senderName(m.senderId) }}
