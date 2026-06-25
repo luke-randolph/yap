@@ -9,3 +9,9 @@ export const VALIDATION_LIMITS = {
   maxGroupParticipants: 50,
   maxReactionEmojiLength: 32,
 } as const;
+
+export const AVATAR = {
+  maxUploadBytes: 5 * 1024 * 1024, // 5 MB raw upload cap
+  allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  outputSize: 256, // square px after processing
+} as const;

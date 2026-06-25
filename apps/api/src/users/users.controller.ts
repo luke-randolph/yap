@@ -1,5 +1,19 @@
-import { Body, Controller, Get, NotFoundException, Patch, Query, UseGuards } from '@nestjs/common';
 import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  AVATAR,
   type UpdateUserInput,
   type UserPublicDTO,
   type UserSearchQueryInput,
@@ -9,55 +23,46 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard, type AccessTokenPayload } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { PrismaService } from '../prisma/prisma.service';
-import { userPublicSelect } from './user.selects';
-
-const USER_SEARCH_LIMIT = 10;
+import { UsersService } from './users.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly users: UsersService) {}
 
   @Get('me')
-  async me(@CurrentUser() current: AccessTokenPayload): Promise<UserPublicDTO> {
-    const user = await this.prisma.user.findFirst({
-      where: { id: current.sub, deletedAt: null },
-      select: userPublicSelect,
-    });
-    if (!user) throw new NotFoundException();
-    return user;
+  me(@CurrentUser() current: AccessTokenPayload): Promise<UserPublicDTO> {
+    return this.users.findMe(current.sub);
   }
 
   @Patch('me')
-  async updateMe(
+  updateMe(
     @CurrentUser() current: AccessTokenPayload,
     @Body(new ZodValidationPipe(updateUserSchema)) body: UpdateUserInput,
   ): Promise<UserPublicDTO> {
-    return this.prisma.user.update({
-      where: { id: current.sub },
-      data: { displayName: body.displayName },
-      select: userPublicSelect,
-    });
+    return this.users.updateDisplayName(current.sub, body.displayName);
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: AVATAR.maxUploadBytes } }))
+  uploadAvatar(
+    @CurrentUser() current: AccessTokenPayload,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<UserPublicDTO> {
+    if (!file) throw new BadRequestException('No image uploaded');
+    return this.users.setAvatarFromUpload(current.sub, file);
+  }
+
+  @Delete('me/avatar')
+  deleteAvatar(@CurrentUser() current: AccessTokenPayload): Promise<UserPublicDTO> {
+    return this.users.removeAvatar(current.sub);
   }
 
   @Get('search')
-  async search(
+  search(
     @CurrentUser() current: AccessTokenPayload,
     @Query(new ZodValidationPipe(userSearchQuerySchema)) query: UserSearchQueryInput,
   ): Promise<UserPublicDTO[]> {
-    return this.prisma.user.findMany({
-      where: {
-        deletedAt: null,
-        id: { not: current.sub },
-        OR: [
-          { displayName: { contains: query.q, mode: 'insensitive' } },
-          { email: { contains: query.q, mode: 'insensitive' } },
-        ],
-      },
-      select: userPublicSelect,
-      orderBy: { displayName: 'asc' },
-      take: USER_SEARCH_LIMIT,
-    });
+    return this.users.search(current.sub, query.q);
   }
 }
