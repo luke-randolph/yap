@@ -17,6 +17,9 @@
   --destructive: #FDA4AF;
   --destructive-soft: #FFE4E6;
   --destructive-foreground: #4C0519;
+  --overlay: #2B2640;
+  --star: #F5D27A;
+  --star-foreground: #3D2E0A;
 }
 
 .dark {
@@ -36,6 +39,9 @@
   --destructive: #FB7185;
   --destructive-soft: #4C0519;
   --destructive-foreground: #FFE4E6;
+  --overlay: #2B2640;
+  --star: #F5D27A;
+  --star-foreground: #3D2E0A;
 }
 
 @theme inline {
@@ -55,6 +61,9 @@
   --color-destructive: var(--destructive);
   --color-destructive-soft: var(--destructive-soft);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-overlay: var(--overlay);
+  --color-star: var(--star);
+  --color-star-foreground: var(--star-foreground);
 }
 
 @layer base {

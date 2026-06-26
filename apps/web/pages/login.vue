@@ -10,7 +10,7 @@ const displayName = ref('');
 const error = ref<string | null>(null);
 const submitting = ref(false);
 
-const heading = computed(() => (step.value === 'name' ? 'One last step' : 'Sign in to Yap'));
+const heading = computed(() => (step.value === 'name' ? 'One last step' : 'Sign in'));
 
 const subtitle = computed(() => {
   if (step.value === 'email') return "We'll email you a 6-digit code.";
@@ -80,6 +80,7 @@ function extractMessage(e: unknown): string | null {
 <template>
   <div class="grid min-h-screen place-items-center px-6">
     <div class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-sm">
+      <img src="/yap-logo.png" alt="Yap" class="mb-5 h-9 w-auto mx-auto" />
       <h1 class="text-xl font-semibold tracking-tight">{{ heading }}</h1>
       <p class="mt-1 text-sm text-muted-foreground">{{ subtitle }}</p>
 

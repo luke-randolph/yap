@@ -103,7 +103,7 @@ function subline(conv: ConversationDTO): string {
                 <span class="truncate text-sm font-medium">{{ conv.displayName }}</span>
                 <span
                   v-if="conv.hasUnreadMessages"
-                  class="h-2 w-2 shrink-0 rounded-full bg-[#A78BFA]"
+                  class="h-2 w-2 shrink-0 rounded-full bg-primary"
                   title="New message"
                 />
               </span>
@@ -129,7 +129,7 @@ function subline(conv: ConversationDTO): string {
               class="transition"
               :class="
                 conv.isStarred
-                  ? 'fill-[#F5D27A] text-[#3D2E0A] group-hover/star:opacity-60'
+                  ? 'fill-star text-star-foreground group-hover/star:opacity-60'
                   : 'fill-transparent text-muted-foreground group-hover/star:fill-muted-foreground'
               "
             />
