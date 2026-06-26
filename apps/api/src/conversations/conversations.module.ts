@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { MessagesService } from '../messages/messages.service';
+import { StorageModule } from '../storage/storage.module';
 import { ConversationsController } from './conversations.controller';
 import { ConversationsService } from './conversations.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, StorageModule],
   controllers: [ConversationsController],
   providers: [ConversationsService, MessagesService],
   exports: [ConversationsService, MessagesService],
