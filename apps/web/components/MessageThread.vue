@@ -36,6 +36,13 @@ function isFirstInMessageRun(index: number): boolean {
   return index === 0 || items.value[index - 1]?.senderId !== items.value[index]?.senderId;
 }
 
+function isLastInMessageRun(index: number): boolean {
+  return (
+    index === items.value.length - 1 ||
+    items.value[index + 1]?.senderId !== items.value[index]?.senderId
+  );
+}
+
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
@@ -111,9 +118,9 @@ watch(() => items.value.length, scrollToBottom);
             class="group flex items-center gap-1"
             :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
           >
-            <template v-if="!isFromCurrentUser(m.senderId)">
+            <template v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)">
               <UserAvatar
-                v-if="isFirstInMessageRun(i)"
+                v-if="isLastInMessageRun(i)"
                 :name="senderName(m.senderId)"
                 :src="senderAvatar(m.senderId)"
                 :size="28"
