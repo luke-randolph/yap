@@ -66,6 +66,13 @@ export const sendMessageSchema = z.object({
 });
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
+export const sendImageMessageSchema = z.object({
+  body: z.string().trim().max(VALIDATION_LIMITS.maxMessageBodyLength).optional(),
+  parentMessageId: z.string().cuid().optional(),
+  clientMessageId: z.string().uuid(),
+});
+export type SendImageMessageInput = z.infer<typeof sendImageMessageSchema>;
+
 export const socketSendMessageSchema = sendMessageSchema.extend({
   conversationId: z.string().cuid(),
 });

@@ -123,6 +123,58 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
+  async function sendImage(
+    conversationId: string,
+    file: File,
+    body: string,
+    parentMessageId: string | null = null,
+  ): Promise<void> {
+    const auth = useAuthStore();
+    const clientMessageId = crypto.randomUUID();
+    const previewUrl = URL.createObjectURL(file);
+    const optimistic: ChatMessage = {
+      id: `temp-${clientMessageId}`,
+      conversationId,
+      senderId: auth.user?.id ?? '',
+      body: body || null,
+      parentMessageId,
+      attachments: [
+        {
+          id: `temp-att-${clientMessageId}`,
+          url: previewUrl,
+          mimeType: file.type,
+          width: null,
+          height: null,
+          sizeBytes: file.size,
+        },
+      ],
+      reactions: [],
+      createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      clientMessageId,
+      status: 'sending',
+    };
+    upsert(conversationId, optimistic);
+
+    try {
+      const api = useApi();
+      const form = new FormData();
+      form.append('file', file);
+      if (body) form.append('body', body);
+      if (parentMessageId) form.append('parentMessageId', parentMessageId);
+      form.append('clientMessageId', clientMessageId);
+      const msg = await api<MessageDTO>(`/conversations/${conversationId}/messages/image`, {
+        method: 'POST',
+        body: form,
+      });
+      upsert(conversationId, { ...msg, clientMessageId, status: 'sent' });
+      URL.revokeObjectURL(previewUrl);
+    } catch {
+      setStatus(conversationId, clientMessageId, 'failed');
+    }
+  }
+
   function handleIncoming(payload: {
     conversationId: string;
     message: MessageDTO;
@@ -234,6 +286,7 @@ export const useMessagesStore = defineStore('messages', () => {
     ensureLoaded,
     fetchHistory,
     send,
+    sendImage,
     react,
     unreact,
     handleIncoming,

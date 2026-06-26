@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,19 +9,25 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  MESSAGE_IMAGE,
   type ConversationDTO,
   type CreateConversationInput,
   type MessageDTO,
   type MessagesQueryInput,
   type ReactMessageInput,
+  type SendImageMessageInput,
   type SendMessageInput,
   type UpdateConversationInput,
   createConversationSchema,
   messagesQuerySchema,
   reactMessageSchema,
+  sendImageMessageSchema,
   sendMessageSchema,
   updateConversationSchema,
 } from '@yap/contracts';
@@ -111,6 +118,18 @@ export class ConversationsController {
     @Body(new ZodValidationPipe(sendMessageSchema)) body: SendMessageInput,
   ): Promise<MessageDTO> {
     return this.messages.create(current.sub, conversationId, body);
+  }
+
+  @Post(':conversationId/messages/image')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MESSAGE_IMAGE.maxUploadBytes } }))
+  async sendImageMessage(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Body(new ZodValidationPipe(sendImageMessageSchema)) body: SendImageMessageInput,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<MessageDTO> {
+    if (!file) throw new BadRequestException('No image uploaded');
+    return this.messages.createImageMessage(current.sub, conversationId, body, file);
   }
 
   @Post(':conversationId/messages/:messageId/reactions')

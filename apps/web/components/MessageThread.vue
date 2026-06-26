@@ -165,7 +165,16 @@ watch(() => items.value.length, scrollToBottom);
                   <span class="font-medium">{{ parentSender(m) }}</span>
                   <span class="block truncate">{{ parentSnippet(m) }}</span>
                 </div>
-                <p class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
+                <img
+                  v-for="att in m.attachments"
+                  :key="att.id"
+                  :src="att.url"
+                  alt="Image attachment"
+                  loading="lazy"
+                  class="max-h-80 max-w-full rounded-lg object-cover"
+                  :class="m.body ? 'mb-1' : ''"
+                />
+                <p v-if="m.body" class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
               </div>
               <MessageActions
                 class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"

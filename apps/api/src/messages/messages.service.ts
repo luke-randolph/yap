@@ -1,14 +1,19 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { BadRequestException, ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import {
   CONVERSATION_ERROR_CODES,
+  MESSAGE_IMAGE,
   type MessageDTO,
   type MessagesQueryInput,
+  type SendImageMessageInput,
   type SendMessageInput,
 } from '@yap/contracts';
+import sharp from 'sharp';
 import { ConversationsService } from '../conversations/conversations.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { STORAGE, type StorageAdapter } from '../storage/storage.interface';
 import {
   REALTIME_EVENTS,
   type MessageCreatedEvent,
@@ -22,12 +27,21 @@ const messageInclude = {
 
 type MessageWithRelations = Prisma.MessageGetPayload<{ include: typeof messageInclude }>;
 
+interface AttachmentData {
+  url: string;
+  mimeType: string;
+  width: number;
+  height: number;
+  sizeBytes: number;
+}
+
 @Injectable()
 export class MessagesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
     private readonly conversations: ConversationsService,
+    @Inject(STORAGE) private readonly storage: StorageAdapter,
   ) {}
 
   async list(
@@ -74,6 +88,53 @@ export class MessagesService {
     conversationId: string,
     input: SendMessageInput,
   ): Promise<MessageDTO> {
+    return this.persistMessage(senderId, conversationId, input, []);
+  }
+
+  async createImageMessage(
+    senderId: string,
+    conversationId: string,
+    input: SendImageMessageInput,
+    file: Express.Multer.File,
+  ): Promise<MessageDTO> {
+    if (!MESSAGE_IMAGE.allowedMimeTypes.some((t) => t === file.mimetype)) {
+      throw new BadRequestException('Unsupported image type');
+    }
+    const { data, info } = await sharp(file.buffer)
+      .rotate()
+      .resize(MESSAGE_IMAGE.maxDimension, MESSAGE_IMAGE.maxDimension, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 80 })
+      .toBuffer({ resolveWithObject: true });
+    const key = `messages/${conversationId}/${randomUUID()}.webp`;
+    const url = await this.storage.put(key, data, 'image/webp');
+    const attachment: AttachmentData = {
+      url,
+      mimeType: 'image/webp',
+      width: info.width,
+      height: info.height,
+      sizeBytes: info.size,
+    };
+    return this.persistMessage(
+      senderId,
+      conversationId,
+      { body: input.body || null, parentMessageId: input.parentMessageId, clientMessageId: input.clientMessageId },
+      [attachment],
+    );
+  }
+
+  private async persistMessage(
+    senderId: string,
+    conversationId: string,
+    input: {
+      body?: string | null;
+      parentMessageId?: string;
+      clientMessageId: string;
+    },
+    attachments: AttachmentData[],
+  ): Promise<MessageDTO> {
     // Fetch active participants once: this both gates the send (sender must be a
     // member) and supplies the recipient list for the realtime broadcast below.
     const participants = await this.prisma.conversationParticipant.findMany({
@@ -110,8 +171,9 @@ export class MessagesService {
         data: {
           conversationId,
           senderId,
-          body: input.body,
+          body: input.body ?? null,
           parentMessageId: input.parentMessageId ?? null,
+          attachments: attachments.length ? { create: attachments } : undefined,
         },
         include: messageInclude,
       }),

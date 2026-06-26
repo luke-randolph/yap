@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Reply, SendHorizontal, Smile, X } from 'lucide-vue-next';
+import { ImagePlus, Reply, SendHorizontal, Smile, X } from 'lucide-vue-next';
 import { onClickOutside, onKeyStroke } from '@vueuse/core';
 import type { EmojiClickEventDetail } from 'vuemoji-picker';
-import { VALIDATION_LIMITS } from '@yap/contracts';
+import { MESSAGE_IMAGE, VALIDATION_LIMITS } from '@yap/contracts';
 
 const props = defineProps<{
   conversationId: string;
@@ -73,13 +73,58 @@ const replyToName = computed(() => {
 
 const replySnippet = computed(() => messages.replyTarget?.body ?? 'Attachment');
 
+const fileInput = ref<HTMLInputElement | null>(null);
+const pendingFile = ref<File | null>(null);
+const pendingPreview = ref<string | null>(null);
+const photoError = ref<string | null>(null);
+
+function pickImage() {
+  photoError.value = null;
+  fileInput.value?.click();
+}
+
+function onFileChange(e: Event) {
+  const target = e.target as HTMLInputElement;
+  const file = target.files?.[0];
+  target.value = '';
+  if (!file) return;
+  if (!MESSAGE_IMAGE.allowedMimeTypes.some((t) => t === file.type)) {
+    photoError.value = 'Please choose a JPEG, PNG, WebP, or GIF image.';
+    return;
+  }
+  if (file.size > MESSAGE_IMAGE.maxUploadBytes) {
+    photoError.value = `Image must be under ${Math.round(MESSAGE_IMAGE.maxUploadBytes / 1024 / 1024)} MB.`;
+    return;
+  }
+  clearPending();
+  pendingFile.value = file;
+  pendingPreview.value = URL.createObjectURL(file);
+}
+
+function clearPending() {
+  if (pendingPreview.value) URL.revokeObjectURL(pendingPreview.value);
+  pendingPreview.value = null;
+  pendingFile.value = null;
+  photoError.value = null;
+}
+
+onBeforeUnmount(clearPending);
+
 async function send() {
   const body = draft.value.trim();
-  if (!body) return;
+  const file = pendingFile.value;
+  if (!body && !file) return;
   const parentMessageId = messages.replyTarget?.id ?? null;
   draft.value = '';
   messages.clearReplyTarget();
-  await messages.send(props.conversationId, body, parentMessageId);
+  if (file) {
+    pendingFile.value = null;
+    if (pendingPreview.value) URL.revokeObjectURL(pendingPreview.value);
+    pendingPreview.value = null;
+    await messages.sendImage(props.conversationId, file, body, parentMessageId);
+  } else {
+    await messages.send(props.conversationId, body, parentMessageId);
+  }
 }
 </script>
 
@@ -103,6 +148,24 @@ async function send() {
         <X class="h-4 w-4" />
       </button>
     </div>
+    <div v-if="pendingPreview" class="mb-2">
+      <div class="relative inline-block">
+        <img
+          :src="pendingPreview"
+          alt="Selected image"
+          class="h-20 w-20 rounded-md border border-border object-cover"
+        />
+        <button
+          type="button"
+          class="absolute -right-2 -top-2 rounded-full border border-border bg-card p-0.5 text-muted-foreground hover:text-foreground"
+          title="Remove image"
+          @click="clearPending"
+        >
+          <X class="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+    <p v-if="photoError" class="mb-2 text-xs text-destructive-foreground">{{ photoError }}</p>
     <div class="flex items-end gap-2">
       <div ref="emojiRoot" class="relative self-center">
         <button
@@ -131,6 +194,21 @@ async function send() {
           <EmojiPicker :is-dark="isDark" :picker-style="pickerStyle" @emoji-click="insertEmoji" />
         </div>
       </div>
+      <button
+        type="button"
+        class="flex items-center justify-center self-center rounded-md border border-border p-3 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        title="Add photo"
+        @click="pickImage"
+      >
+        <ImagePlus class="h-4 w-4" />
+      </button>
+      <input
+        ref="fileInput"
+        type="file"
+        class="hidden"
+        :accept="MESSAGE_IMAGE.allowedMimeTypes.join(',')"
+        @change="onFileChange"
+      />
       <textarea
         ref="textarea"
         v-model="draft"
@@ -142,7 +220,7 @@ async function send() {
       />
       <button
         type="submit"
-        :disabled="!draft.trim()"
+        :disabled="!draft.trim() && !pendingFile"
         class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
         title="Send"
       >
