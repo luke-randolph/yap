@@ -85,6 +85,18 @@ export const useAuthStore = defineStore('auth', () => {
     });
   }
 
+  async function uploadAvatar(file: File): Promise<void> {
+    const api = useApi();
+    const form = new FormData();
+    form.append('file', file);
+    user.value = await api<UserPublicDTO>('/users/me/avatar', { method: 'POST', body: form });
+  }
+
+  async function removeAvatar(): Promise<void> {
+    const api = useApi();
+    user.value = await api<UserPublicDTO>('/users/me/avatar', { method: 'DELETE' });
+  }
+
   async function logout(): Promise<void> {
     try {
       await authFetch('/auth/logout', { method: 'POST' });
@@ -104,6 +116,8 @@ export const useAuthStore = defineStore('auth', () => {
     requestOtp,
     verifyOtp,
     updateProfile,
+    uploadAvatar,
+    removeAvatar,
     refresh,
     logout,
   };

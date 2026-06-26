@@ -14,18 +14,33 @@ const scroller = ref<HTMLElement | null>(null);
 const items = computed(() => messages.list(props.conversation.id));
 const loading = computed(() => messages.isLoading(props.conversation.id));
 
-const senderNames = computed(() => {
-  const map = new Map<string, string>();
-  for (const p of props.conversation.participants) map.set(p.user.id, p.user.displayName);
+const senderById = computed(() => {
+  const map = new Map<string, ConversationDTO['participants'][number]['user']>();
+  for (const p of props.conversation.participants) map.set(p.user.id, p.user);
   return map;
 });
 
 function senderName(senderId: string): string {
-  return senderNames.value.get(senderId) ?? 'Unknown';
+  return senderById.value.get(senderId)?.displayName ?? 'Unknown';
+}
+
+function senderAvatar(senderId: string): string | null {
+  return senderById.value.get(senderId)?.avatarUrl ?? null;
 }
 
 function isFromCurrentUser(senderId: string): boolean {
   return senderId === auth.user?.id;
+}
+
+function isFirstInMessageRun(index: number): boolean {
+  return index === 0 || items.value[index - 1]?.senderId !== items.value[index]?.senderId;
+}
+
+function isLastInMessageRun(index: number): boolean {
+  return (
+    index === items.value.length - 1 ||
+    items.value[index + 1]?.senderId !== items.value[index]?.senderId
+  );
 }
 
 function formatTime(iso: string): string {
@@ -94,64 +109,79 @@ watch(() => items.value.length, scrollToBottom);
 
       <ul v-else class="flex flex-col gap-2">
         <li
-          v-for="m in items"
+          v-for="(m, i) in items"
           :key="m.clientMessageId ?? m.id"
-          class="flex flex-col"
-          :class="isFromCurrentUser(m.senderId) ? 'items-end' : 'items-start'"
+          class="flex gap-1"
+          :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
         >
+          <template v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)">
+            <UserAvatar
+              v-if="isLastInMessageRun(i)"
+              :name="senderName(m.senderId)"
+              :src="senderAvatar(m.senderId)"
+              :size="28"
+              class="self-end"
+            />
+            <span v-else class="w-7 shrink-0" aria-hidden="true" />
+          </template>
           <div
-            class="group flex items-center gap-1"
-            :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
+            class="flex min-w-0 flex-1 flex-col"
+            :class="isFromCurrentUser(m.senderId) ? 'items-end' : 'items-start'"
           >
             <div
-              class="max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
-              :class="[
-                isFromCurrentUser(m.senderId)
-                  ? 'rounded-br-none bg-primary text-primary-foreground'
-                  : 'rounded-bl-none bg-muted text-foreground',
-                isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
-                  ? 'border-gray-800 dark:border-gray-400 shadow-[0_0_20px] shadow-gray-400'
-                  : messages.replyTarget?.id === m.id
-                    ? 'border-gray-400 dark:border-primary/50 shadow-[0_0_20px] shadow-primary/30'
-                    : 'border-transparent',
-              ]"
+              class="group flex items-center gap-1"
+              :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
             >
-              <p
-                v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)"
-                class="mb-0.5 text-xs font-medium opacity-70"
-              >
-                {{ senderName(m.senderId) }}
-              </p>
               <div
-                v-if="m.parentMessageId"
-                class="mb-1 rounded-md border-l-2 py-1 pl-2 pr-2 text-xs"
-                :class="
+                class="max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
+                :class="[
                   isFromCurrentUser(m.senderId)
-                    ? 'border-primary-foreground/60 bg-primary-foreground/15'
-                    : 'border-foreground/30 bg-foreground/10'
-                "
+                    ? 'rounded-br-none bg-primary text-primary-foreground'
+                    : 'rounded-bl-none bg-muted text-foreground',
+                  isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
+                    ? 'border-gray-800 dark:border-gray-400 shadow-[0_0_20px] shadow-gray-400'
+                    : messages.replyTarget?.id === m.id
+                      ? 'border-gray-400 dark:border-primary/50 shadow-[0_0_20px] shadow-primary/30'
+                      : 'border-transparent',
+                ]"
               >
-                <span class="font-medium">{{ parentSender(m) }}</span>
-                <span class="block truncate">{{ parentSnippet(m) }}</span>
+                <p
+                  v-if="conversation.isGroup && !isFromCurrentUser(m.senderId) && isFirstInMessageRun(i)"
+                  class="mb-0.5 text-xs font-medium opacity-70"
+                >
+                  {{ senderName(m.senderId) }}
+                </p>
+                <div
+                  v-if="m.parentMessageId"
+                  class="mb-1 rounded-md border-l-2 py-1 pl-2 pr-2 text-xs"
+                  :class="
+                    isFromCurrentUser(m.senderId)
+                      ? 'border-primary-foreground/60 bg-primary-foreground/15'
+                      : 'border-foreground/30 bg-foreground/10'
+                  "
+                >
+                  <span class="font-medium">{{ parentSender(m) }}</span>
+                  <span class="block truncate">{{ parentSnippet(m) }}</span>
+                </div>
+                <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
               </div>
-              <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
+              <MessageActions
+                class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
+                @reply="messages.setReplyTarget(m)"
+                @react="toggleReaction(m, $event)"
+              />
             </div>
-            <MessageActions
-              class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-              :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
-              @reply="messages.setReplyTarget(m)"
-              @react="toggleReaction(m, $event)"
-            />
+            <MessageReactions :reactions="m.reactions" @toggle="toggleReaction(m, $event)" />
+            <span
+              class="px-1 text-xs text-muted-foreground"
+              :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"
+            >
+              {{ formatTime(m.createdAt) }}
+              <template v-if="m.status === 'sending'"> · Sending…</template>
+              <template v-else-if="m.status === 'failed'"> · Failed to send</template>
+            </span>
           </div>
-          <MessageReactions :reactions="m.reactions" @toggle="toggleReaction(m, $event)" />
-          <span
-            class="px-1 text-xs text-muted-foreground"
-            :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"
-          >
-            {{ formatTime(m.createdAt) }}
-            <template v-if="m.status === 'sending'"> · Sending…</template>
-            <template v-else-if="m.status === 'failed'"> · Failed to send</template>
-          </span>
         </li>
       </ul>
     </div>

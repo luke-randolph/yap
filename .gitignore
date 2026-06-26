@@ -34,3 +34,6 @@ coverage/
 
 # OS
 .cache/
+# runtime user uploads (dev only — never committed)
+/apps/api/uploads/
+!/apps/api/uploads/.gitkeep

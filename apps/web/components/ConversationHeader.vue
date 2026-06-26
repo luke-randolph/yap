@@ -8,6 +8,20 @@ const props = defineProps<{
 
 const conversations = useConversationsStore();
 const sidebar = useSidebarStore();
+const auth = useAuthStore();
+
+const MAX_DISCS = 3;
+
+const discPeople = computed(() => {
+  const others = props.conversation.participants
+    .filter((p) => p.user.id !== auth.user?.id)
+    .map((p) => p.user);
+  // Fall back to all participants for a note-to-self conversation.
+  return others.length ? others : props.conversation.participants.map((p) => p.user);
+});
+
+const shownDiscs = computed(() => discPeople.value.slice(0, MAX_DISCS));
+const extraDiscs = computed(() => Math.max(0, discPeople.value.length - MAX_DISCS));
 
 const editingName = ref(false);
 const nameDraft = ref('');
@@ -90,6 +104,17 @@ async function saveName() {
       >
         <Menu class="h-5 w-5" />
       </button>
+      <div class="flex items-center -space-x-2">
+        <span v-for="u in shownDiscs" :key="u.id" class="rounded-full ring-2 ring-card">
+          <UserAvatar :name="u.displayName" :src="u.avatarUrl" :size="28" />
+        </span>
+        <span
+          v-if="extraDiscs"
+          class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground ring-2 ring-card"
+        >
+          +{{ extraDiscs }}
+        </span>
+      </div>
       <h2 class="text-base font-medium">{{ conversation.displayName }}</h2>
       <button
         v-if="conversation.isGroup"
