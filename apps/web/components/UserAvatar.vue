@@ -35,7 +35,7 @@ const dimStyle = computed(() => ({
     role="img"
     :aria-label="name"
     :style="dimStyle"
-    class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-background font-medium leading-none select-none"
+    class="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-card font-medium leading-none select-none"
   >
     <img
       v-if="showImage"

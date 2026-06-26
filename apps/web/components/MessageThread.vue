@@ -96,7 +96,7 @@ watch(() => items.value.length, scrollToBottom);
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
-    <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-muted px-6 py-4">
+    <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-background px-6 py-4">
       <p
         v-if="loading && items.length === 0"
         class="py-6 text-center text-sm text-muted-foreground"
@@ -120,7 +120,7 @@ watch(() => items.value.length, scrollToBottom);
               :name="senderName(m.senderId)"
               :src="senderAvatar(m.senderId)"
               :size="28"
-              class="self-end"
+              class="self-end ring-1 ring-border"
             />
             <span v-else class="w-7 shrink-0" aria-hidden="true" />
           </template>
@@ -137,7 +137,7 @@ watch(() => items.value.length, scrollToBottom);
                 :class="[
                   isFromCurrentUser(m.senderId)
                     ? 'rounded-br-none bg-primary text-primary-foreground'
-                    : 'rounded-bl-none bg-background text-foreground',
+                    : 'rounded-bl-none bg-card text-foreground',
                   isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
                     ? 'border-gray-800 dark:border-gray-400 shadow-[0_0_20px] shadow-gray-400'
                     : messages.replyTarget?.id === m.id
@@ -146,7 +146,9 @@ watch(() => items.value.length, scrollToBottom);
                 ]"
               >
                 <p
-                  v-if="conversation.isGroup && !isFromCurrentUser(m.senderId) && isFirstInMessageRun(i)"
+                  v-if="
+                    conversation.isGroup && !isFromCurrentUser(m.senderId) && isFirstInMessageRun(i)
+                  "
                   class="mb-0.5 text-xs font-medium opacity-70"
                 >
                   {{ senderName(m.senderId) }}

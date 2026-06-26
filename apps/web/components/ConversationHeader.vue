@@ -98,12 +98,12 @@ async function saveName() {
         <Menu class="h-5 w-5" />
       </button>
       <div class="flex items-center -space-x-2">
-        <span v-for="u in shownDiscs" :key="u.id" class="flex rounded-full ring-2 ring-card">
+        <span v-for="u in shownDiscs" :key="u.id" class="flex rounded-full ring-1 ring-border">
           <UserAvatar :name="u.displayName" :src="u.avatarUrl" :size="28" />
         </span>
         <span
           v-if="extraDiscs"
-          class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground ring-2 ring-card"
+          class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground ring-1 ring-border"
         >
           +{{ extraDiscs }}
         </span>
