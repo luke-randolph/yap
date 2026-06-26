@@ -156,6 +156,7 @@ export const useMessagesStore = defineStore('messages', () => {
       upsert(conversationId, { ...updated, status: 'sent' });
     } catch {
       msg.reactions = previous;
+      useToastsStore().error("Couldn't add reaction");
     }
   }
 
@@ -177,6 +178,7 @@ export const useMessagesStore = defineStore('messages', () => {
       upsert(conversationId, { ...updated, status: 'sent' });
     } catch {
       msg.reactions = previous;
+      useToastsStore().error("Couldn't remove reaction");
     }
   }
 

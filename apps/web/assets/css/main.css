@@ -11,10 +11,10 @@
   --primary-foreground: #ffffff;
   --accent: #ddd6fe;
   --accent-foreground: #4c1d95;
-  --success: #6ee7b7;
+  --success: #059669;
   --success-soft: #d1fae5;
   --success-foreground: #064e3b;
-  --destructive: #fda4af;
+  --destructive: #e11d48;
   --destructive-soft: #ffe4e6;
   --destructive-foreground: #4c0519;
   --overlay: #2b2640;
@@ -95,22 +95,4 @@
     outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
-}
-
-/* Match the light-mode emoji picker surface to the app palette (dark mode keeps the package default). */
-.v3-emoji-picker.v3-color-theme-light {
-  --v3-picker-bg: var(--card);
-  --v3-picker-input-bg: var(--background);
-}
-
-.v3-emoji-picker.v3-color-theme-light,
-.v3-emoji-picker.v3-color-theme-dark {
-  box-shadow: none;
-  border-radius: 0 0 10px;
-}
-
-.v3-header,
-.v3-bottom {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
 }

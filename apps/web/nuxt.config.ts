@@ -18,7 +18,7 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
     optimizeDeps: {
-      include: ['socket.io-client', 'zod', 'lucide-vue-next'],
+      include: ['socket.io-client', 'zod', 'lucide-vue-next', 'vuemoji-picker', '@vueuse/core'],
     },
   },
   colorMode: {

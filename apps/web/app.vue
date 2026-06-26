@@ -2,5 +2,6 @@
   <div class="min-h-screen bg-background text-foreground">
     <NuxtRouteAnnouncer />
     <NuxtPage />
+    <ToastHost />
   </div>
 </template>

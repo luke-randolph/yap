@@ -26,7 +26,7 @@
     "tailwindcss": "^4.2.4",
     "vue": "^3.5.33",
     "vue-router": "^5.0.6",
-    "vue3-emoji-picker": "^1.1.8"
+    "vuemoji-picker": "^0.3.2"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.0.0",

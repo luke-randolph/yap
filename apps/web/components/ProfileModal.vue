@@ -8,6 +8,7 @@ const emit = defineEmits<{
 }>();
 
 const auth = useAuthStore();
+const toasts = useToastsStore();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
@@ -63,6 +64,7 @@ async function savePhoto() {
   try {
     await auth.uploadAvatar(selectedFile.value);
     clearPreview();
+    toasts.success('Photo updated');
   } catch (e) {
     photoError.value = getApiError(e)?.message ?? 'Could not upload photo';
   } finally {
@@ -76,6 +78,7 @@ async function removePhoto() {
   try {
     await auth.removeAvatar();
     clearPreview();
+    toasts.success('Photo removed');
   } catch (e) {
     photoError.value = getApiError(e)?.message ?? 'Could not remove photo';
   } finally {
@@ -93,6 +96,7 @@ async function saveName() {
   nameError.value = null;
   try {
     await auth.updateProfile(trimmed);
+    toasts.success('Name updated');
   } catch (e) {
     nameError.value = getApiError(e)?.message ?? 'Could not save your name';
   } finally {
