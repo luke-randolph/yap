@@ -105,7 +105,7 @@ onBeforeUnmount(clearPreview);
 
 <template>
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2640]/55 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-overlay/55 backdrop-blur-sm"
     @click.self="emit('close')"
   >
     <div class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg">

@@ -115,7 +115,7 @@ async function saveName() {
           +{{ extraDiscs }}
         </span>
       </div>
-      <h2 class="text-base font-medium">{{ conversation.displayName }}</h2>
+      <h2 class="text-lg font-medium">{{ conversation.displayName }}</h2>
       <button
         v-if="conversation.isGroup"
         type="button"

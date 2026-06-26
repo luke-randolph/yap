@@ -32,7 +32,7 @@ function extractMessage(e: unknown): string | null {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-[#2b2640]/55 backdrop-blur-sm">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-overlay/55 backdrop-blur-sm">
     <div class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg">
       <h2 class="text-lg font-semibold tracking-tight">What should we call you?</h2>
       <p class="mt-1 text-sm text-muted-foreground">

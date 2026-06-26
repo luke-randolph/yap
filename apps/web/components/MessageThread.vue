@@ -129,11 +129,11 @@ watch(() => items.value.length, scrollToBottom);
             :class="isFromCurrentUser(m.senderId) ? 'items-end' : 'items-start'"
           >
             <div
-              class="group flex items-center gap-1"
+              class="group flex min-w-0 items-center gap-1"
               :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
             >
               <div
-                class="max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
+                class="min-w-0 max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
                 :class="[
                   isFromCurrentUser(m.senderId)
                     ? 'rounded-br-none bg-primary text-primary-foreground'
@@ -163,7 +163,7 @@ watch(() => items.value.length, scrollToBottom);
                   <span class="font-medium">{{ parentSender(m) }}</span>
                   <span class="block truncate">{{ parentSnippet(m) }}</span>
                 </div>
-                <p class="whitespace-pre-wrap break-words">{{ m.body }}</p>
+                <p class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
               </div>
               <MessageActions
                 class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
@@ -172,7 +172,11 @@ watch(() => items.value.length, scrollToBottom);
                 @react="toggleReaction(m, $event)"
               />
             </div>
-            <MessageReactions :reactions="m.reactions" @toggle="toggleReaction(m, $event)" />
+            <MessageReactions
+              :reactions="m.reactions"
+              :participants="conversation.participants"
+              @toggle="toggleReaction(m, $event)"
+            />
             <span
               class="px-1 text-xs text-muted-foreground"
               :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"

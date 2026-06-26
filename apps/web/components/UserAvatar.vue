@@ -45,6 +45,6 @@ const dimStyle = computed(() => ({
       class="h-full w-full object-cover"
       @error="failed = true"
     />
-    <span v-else aria-hidden="true" class="text-[#A78BFA]">{{ initial }}</span>
+    <span v-else aria-hidden="true" class="font-bold text-primary">{{ initial }}</span>
   </span>
 </template>
