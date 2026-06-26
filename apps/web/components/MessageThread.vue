@@ -96,7 +96,7 @@ watch(() => items.value.length, scrollToBottom);
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
-    <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+    <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-muted px-6 py-4">
       <p
         v-if="loading && items.length === 0"
         class="py-6 text-center text-sm text-muted-foreground"
@@ -137,7 +137,7 @@ watch(() => items.value.length, scrollToBottom);
                 :class="[
                   isFromCurrentUser(m.senderId)
                     ? 'rounded-br-none bg-primary text-primary-foreground'
-                    : 'rounded-bl-none bg-muted text-foreground',
+                    : 'rounded-bl-none bg-background text-foreground',
                   isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
                     ? 'border-gray-800 dark:border-gray-400 shadow-[0_0_20px] shadow-gray-400'
                     : messages.replyTarget?.id === m.id

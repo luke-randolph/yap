@@ -8,17 +8,10 @@ const props = defineProps<{
 
 const conversations = useConversationsStore();
 const sidebar = useSidebarStore();
-const auth = useAuthStore();
 
 const MAX_DISCS = 3;
 
-const discPeople = computed(() => {
-  const others = props.conversation.participants
-    .filter((p) => p.user.id !== auth.user?.id)
-    .map((p) => p.user);
-  // Fall back to all participants for a note-to-self conversation.
-  return others.length ? others : props.conversation.participants.map((p) => p.user);
-});
+const discPeople = computed(() => props.conversation.participants.map((p) => p.user));
 
 const shownDiscs = computed(() => discPeople.value.slice(0, MAX_DISCS));
 const extraDiscs = computed(() => Math.max(0, discPeople.value.length - MAX_DISCS));
@@ -63,7 +56,7 @@ async function saveName() {
 </script>
 
 <template>
-  <header class="border-b border-border bg-card px-6 py-3">
+  <header class="border-b border-border bg-card px-6 py-3 flex flex-col gap-1">
     <div v-if="editingName" class="flex items-center gap-2">
       <input
         v-model="nameDraft"
@@ -105,7 +98,7 @@ async function saveName() {
         <Menu class="h-5 w-5" />
       </button>
       <div class="flex items-center -space-x-2">
-        <span v-for="u in shownDiscs" :key="u.id" class="rounded-full ring-2 ring-card">
+        <span v-for="u in shownDiscs" :key="u.id" class="flex rounded-full ring-2 ring-card">
           <UserAvatar :name="u.displayName" :src="u.avatarUrl" :size="28" />
         </span>
         <span

@@ -90,10 +90,10 @@ async function send() {
       </button>
     </div>
     <div class="flex items-end gap-2">
-      <div ref="emojiRoot" class="relative">
+      <div ref="emojiRoot" class="relative self-center">
         <button
           type="button"
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          class="flex items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
           title="Emoji"
           @click="emojiOpen = !emojiOpen"
         >
