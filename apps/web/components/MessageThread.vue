@@ -185,7 +185,9 @@ watch(() => items.value.length, scrollToBottom);
             >
               {{ formatTime(m.createdAt) }}
               <template v-if="m.status === 'sending'"> · Sending…</template>
-              <template v-else-if="m.status === 'failed'"> · Failed to send</template>
+              <template v-else-if="m.status === 'failed'">
+                · <span class="text-destructive">Failed to send</span>
+              </template>
             </span>
           </div>
         </li>

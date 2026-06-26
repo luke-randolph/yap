@@ -1,20 +1,33 @@
 <script setup lang="ts">
 import { SmilePlus } from 'lucide-vue-next';
 import { onClickOutside, onKeyStroke } from '@vueuse/core';
+import type { EmojiClickEventDetail } from 'vuemoji-picker';
 
 withDefaults(defineProps<{ align?: 'left' | 'right' }>(), { align: 'right' });
 
-const EmojiPicker = defineAsyncComponent(async () => {
-  await import('vue3-emoji-picker/css');
-  return (await import('vue3-emoji-picker')).default;
-});
+const EmojiPicker = defineAsyncComponent(() =>
+  import('vuemoji-picker').then((m) => m.VuemojiPicker),
+);
 
 const emit = defineEmits<{ select: [emoji: string] }>();
 
 const colorMode = useColorMode();
-const pickerTheme = computed<'light' | 'dark'>(() =>
-  colorMode.value === 'dark' ? 'dark' : 'light',
-);
+const isDark = computed(() => colorMode.value === 'dark');
+const pickerStyle = {
+  width: '320px',
+  height: '380px',
+  borderSize: '0',
+  background: 'var(--card)',
+  borderColor: 'var(--border)',
+  indicatorColor: 'var(--primary)',
+  inputBorderColor: 'var(--border)',
+  inputFontColor: 'var(--foreground)',
+  inputPlaceholderColor: 'var(--muted-foreground)',
+  categoryFontColor: 'var(--muted-foreground)',
+  buttonHoverBackground: 'var(--muted)',
+  buttonActiveBackground: 'var(--accent)',
+  outlineColor: 'var(--primary)',
+};
 
 const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLElement | null>(null);
@@ -39,8 +52,9 @@ function toggle() {
   open.value = !open.value;
 }
 
-function onSelect(emoji: { i: string }) {
-  emit('select', emoji.i);
+function onSelect(detail: EmojiClickEventDetail) {
+  if (!detail.unicode) return;
+  emit('select', detail.unicode);
   open.value = false;
 }
 </script>
@@ -65,7 +79,7 @@ function onSelect(emoji: { i: string }) {
         align === 'right' ? 'right-0' : 'left-0',
       ]"
     >
-      <EmojiPicker :native="true" :display-recent="true" :theme="pickerTheme" @select="onSelect" />
+      <EmojiPicker :is-dark="isDark" :picker-style="pickerStyle" @emoji-click="onSelect" />
     </div>
   </div>
 </template>

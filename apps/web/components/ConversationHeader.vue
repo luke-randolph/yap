@@ -8,6 +8,7 @@ const props = defineProps<{
 
 const conversations = useConversationsStore();
 const sidebar = useSidebarStore();
+const toasts = useToastsStore();
 
 const MAX_DISCS = 3;
 
@@ -47,6 +48,7 @@ async function saveName() {
   try {
     await conversations.update(props.conversation.id, { name: trimmed });
     editingName.value = false;
+    toasts.success('Chat renamed');
   } catch (e) {
     nameError.value = getApiError(e)?.message ?? 'Could not rename chat';
   } finally {
@@ -69,7 +71,7 @@ async function saveName() {
       />
       <button
         type="button"
-        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+        class="rounded-md p-1.5 text-success hover:bg-muted disabled:opacity-50"
         title="Save"
         :disabled="savingName"
         @click="saveName"
@@ -78,7 +80,7 @@ async function saveName() {
       </button>
       <button
         type="button"
-        class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        class="rounded-md p-1.5 text-destructive hover:bg-muted"
         title="Cancel"
         @click="cancelEditName"
       >
@@ -112,7 +114,7 @@ async function saveName() {
       <button
         v-if="conversation.isGroup"
         type="button"
-        class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+        class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
         title="Rename group"
         @click="startEditName"
       >

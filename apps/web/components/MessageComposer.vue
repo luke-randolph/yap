@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Reply, SendHorizontal, Smile, X } from 'lucide-vue-next';
 import { onClickOutside, onKeyStroke } from '@vueuse/core';
+import type { EmojiClickEventDetail } from 'vuemoji-picker';
 import { VALIDATION_LIMITS } from '@yap/contracts';
 
 const props = defineProps<{
@@ -11,16 +12,28 @@ const messages = useMessagesStore();
 const conversations = useConversationsStore();
 const auth = useAuthStore();
 const colorMode = useColorMode();
-const pickerTheme = computed<'light' | 'dark'>(() =>
-  colorMode.value === 'dark' ? 'dark' : 'light',
-);
+const isDark = computed(() => colorMode.value === 'dark');
+const pickerStyle = {
+  width: '320px',
+  height: '380px',
+  borderSize: '0',
+  background: 'var(--card)',
+  borderColor: 'var(--border)',
+  indicatorColor: 'var(--primary)',
+  inputBorderColor: 'var(--border)',
+  inputFontColor: 'var(--foreground)',
+  inputPlaceholderColor: 'var(--muted-foreground)',
+  categoryFontColor: 'var(--muted-foreground)',
+  buttonHoverBackground: 'var(--muted)',
+  buttonActiveBackground: 'var(--accent)',
+  outlineColor: 'var(--primary)',
+};
 
 const draft = ref('');
 
-const EmojiPicker = defineAsyncComponent(async () => {
-  await import('vue3-emoji-picker/css');
-  return (await import('vue3-emoji-picker')).default;
-});
+const EmojiPicker = defineAsyncComponent(() =>
+  import('vuemoji-picker').then((m) => m.VuemojiPicker),
+);
 
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const emojiRoot = ref<HTMLElement | null>(null);
@@ -34,8 +47,9 @@ onKeyStroke('Escape', () => {
   if (emojiOpen.value) emojiOpen.value = false;
 });
 
-function insertEmoji(emoji: { i: string }) {
-  const char = emoji.i;
+function insertEmoji(detail: EmojiClickEventDetail) {
+  const char = detail.unicode;
+  if (!char) return;
   const el = textarea.value;
   const start = el?.selectionStart ?? draft.value.length;
   const end = el?.selectionEnd ?? draft.value.length;
@@ -93,7 +107,7 @@ async function send() {
       <div ref="emojiRoot" class="relative self-center">
         <button
           type="button"
-          class="flex items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+          class="flex items-center justify-center rounded-md text-muted-foreground transition-colors p-3 border border-border hover:bg-muted hover:text-foreground"
           title="Emoji"
           @click="emojiOpen = !emojiOpen"
         >
@@ -114,12 +128,7 @@ async function send() {
               <X class="h-4 w-4" />
             </button>
           </div>
-          <EmojiPicker
-            :native="true"
-            :display-recent="true"
-            :theme="pickerTheme"
-            @select="insertEmoji"
-          />
+          <EmojiPicker :is-dark="isDark" :picker-style="pickerStyle" @emoji-click="insertEmoji" />
         </div>
       </div>
       <textarea
