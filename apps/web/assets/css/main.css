@@ -1,47 +1,47 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
-  --background: #E7E4DE;
-  --card: #EFEDEA;
-  --muted: #D8D4D0;
-  --border: #D6D3D1;
+  --background: #e7e4de;
+  --card: #efedea;
+  --muted: #d8d4d0;
+  --border: #d6d3d1;
   --foreground: #000000;
-  --muted-foreground: #6B645F;
-  --primary: #8B5CF6;
-  --primary-foreground: #FFFFFF;
-  --accent: #DDD6FE;
-  --accent-foreground: #4C1D95;
-  --success: #6EE7B7;
-  --success-soft: #D1FAE5;
-  --success-foreground: #064E3B;
-  --destructive: #FDA4AF;
-  --destructive-soft: #FFE4E6;
-  --destructive-foreground: #4C0519;
-  --overlay: #2B2640;
-  --star: #F5D27A;
-  --star-foreground: #3D2E0A;
+  --muted-foreground: #6b645f;
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --accent: #ddd6fe;
+  --accent-foreground: #4c1d95;
+  --success: #6ee7b7;
+  --success-soft: #d1fae5;
+  --success-foreground: #064e3b;
+  --destructive: #fda4af;
+  --destructive-soft: #ffe4e6;
+  --destructive-foreground: #4c0519;
+  --overlay: #2b2640;
+  --star: #f5d27a;
+  --star-foreground: #3d2e0a;
 }
 
 .dark {
-  --background: #100D0C;
-  --card: #1C1917;
+  --background: #100d0c;
+  --card: #1c1917;
   --muted: #292524;
   --border: #292524;
-  --foreground: #F5F5F4;
-  --muted-foreground: #B8B2AE;
-  --primary: #A78BFA;
-  --primary-foreground: #0C0A09;
-  --accent: #4C1D95;
-  --accent-foreground: #DDD6FE;
-  --success: #34D399;
-  --success-soft: #022C22;
-  --success-foreground: #D1FAE5;
-  --destructive: #FB7185;
-  --destructive-soft: #4C0519;
-  --destructive-foreground: #FFE4E6;
-  --overlay: #2B2640;
-  --star: #F5D27A;
-  --star-foreground: #3D2E0A;
+  --foreground: #f5f5f4;
+  --muted-foreground: #b8b2ae;
+  --primary: #a78bfa;
+  --primary-foreground: #0c0a09;
+  --accent: #4c1d95;
+  --accent-foreground: #ddd6fe;
+  --success: #34d399;
+  --success-soft: #022c22;
+  --success-foreground: #d1fae5;
+  --destructive: #fb7185;
+  --destructive-soft: #4c0519;
+  --destructive-foreground: #ffe4e6;
+  --overlay: #2b2640;
+  --star: #f5d27a;
+  --star-foreground: #3d2e0a;
 }
 
 @theme inline {
@@ -70,20 +70,24 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
   button,
   a,
-  [role="button"],
+  [role='button'],
   label,
   summary {
     touch-action: manipulation;
   }
 
   button:not(:disabled),
-  [role="button"]:not([aria-disabled="true"]) {
+  [role='button']:not([aria-disabled='true']) {
     cursor: pointer;
   }
 
@@ -97,4 +101,16 @@
 .v3-emoji-picker.v3-color-theme-light {
   --v3-picker-bg: var(--card);
   --v3-picker-input-bg: var(--background);
+}
+
+.v3-emoji-picker.v3-color-theme-light,
+.v3-emoji-picker.v3-color-theme-dark {
+  box-shadow: none;
+  border-radius: 0 0 10px;
+}
+
+.v3-header,
+.v3-bottom {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }

@@ -12,7 +12,9 @@ const EmojiPicker = defineAsyncComponent(async () => {
 const emit = defineEmits<{ select: [emoji: string] }>();
 
 const colorMode = useColorMode();
-const pickerTheme = computed<'light' | 'dark'>(() => (colorMode.value === 'dark' ? 'dark' : 'light'));
+const pickerTheme = computed<'light' | 'dark'>(() =>
+  colorMode.value === 'dark' ? 'dark' : 'light',
+);
 
 const root = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLElement | null>(null);
