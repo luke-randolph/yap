@@ -39,6 +39,8 @@ export const CONVERSATION_ERROR_CODES = {
   conversationNotFound: 'CONVERSATION_NOT_FOUND',
   notParticipant: 'NOT_PARTICIPANT',
   notGroupConversation: 'NOT_GROUP_CONVERSATION',
+  participantsBlocked: 'PARTICIPANTS_BLOCKED',
+  notBlocked: 'NOT_BLOCKED',
   parentMessageNotFound: 'PARENT_MESSAGE_NOT_FOUND',
   messageNotFound: 'MESSAGE_NOT_FOUND',
 } as const;
@@ -58,6 +60,11 @@ export const updateConversationSchema = z.object({
   name: z.string().trim().min(1).max(VALIDATION_LIMITS.maxConversationNameLength),
 });
 export type UpdateConversationInput = z.infer<typeof updateConversationSchema>;
+
+export const addParticipantsSchema = z.object({
+  participantEmails: z.array(emailSchema).min(1).max(VALIDATION_LIMITS.maxGroupParticipants),
+});
+export type AddParticipantsInput = z.infer<typeof addParticipantsSchema>;
 
 export const sendMessageSchema = z.object({
   body: z.string().trim().min(1).max(VALIDATION_LIMITS.maxMessageBodyLength),

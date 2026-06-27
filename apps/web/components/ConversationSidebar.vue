@@ -17,6 +17,20 @@ const emit = defineEmits<{
 
 const sidebar = useSidebarStore();
 
+type ConvFilter = 'all' | 'groups' | 'dms';
+const filterOptions: { value: ConvFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'groups', label: 'Groups' },
+  { value: 'dms', label: 'DMs' },
+];
+const filter = ref<ConvFilter>('all');
+
+const filtered = computed(() => {
+  if (filter.value === 'groups') return props.conversations.filter((c) => c.isGroup);
+  if (filter.value === 'dms') return props.conversations.filter((c) => !c.isGroup);
+  return props.conversations;
+});
+
 function selectConversation(id: string) {
   emit('select', id);
   sidebar.close();
@@ -40,8 +54,7 @@ function lastActivity(conv: ConversationDTO): string {
 }
 
 function subline(conv: ConversationDTO): string {
-  if (!conv.isGroup)
-    return conv.participants.find((p) => p.user.id !== props.currentUserId)?.user.email ?? '';
+  if (!conv.isGroup) return 'Direct message';
   return `${conv.participants.length} members`;
 }
 </script>
@@ -77,6 +90,23 @@ function subline(conv: ConversationDTO): string {
       </div>
     </div>
 
+    <div class="flex gap-1 border-b border-border px-3 py-2">
+      <button
+        v-for="opt in filterOptions"
+        :key="opt.value"
+        type="button"
+        class="rounded-full px-3 py-1 text-xs font-medium transition-colors"
+        :class="
+          filter === opt.value
+            ? 'bg-accent text-accent-foreground'
+            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+        "
+        @click="filter = opt.value"
+      >
+        {{ opt.label }}
+      </button>
+    </div>
+
     <div class="flex-1 overflow-y-auto">
       <p
         v-if="loading && conversations.length === 0"
@@ -87,8 +117,11 @@ function subline(conv: ConversationDTO): string {
       <p v-else-if="conversations.length === 0" class="px-4 py-6 text-sm text-muted-foreground">
         No chats yet. Tap <span class="font-medium text-foreground">+</span> to start one.
       </p>
+      <p v-else-if="filtered.length === 0" class="px-4 py-6 text-sm text-muted-foreground">
+        No {{ filter === 'groups' ? 'group chats' : 'direct messages' }} yet.
+      </p>
       <ul v-else class="divide-y divide-border">
-        <li v-for="conv in conversations" :key="conv.id" class="group relative">
+        <li v-for="conv in filtered" :key="conv.id" class="group relative">
           <button
             type="button"
             class="block w-full py-3 pl-4 text-left transition-colors hover:bg-muted"

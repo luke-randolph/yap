@@ -80,6 +80,7 @@ export const useMessagesStore = defineStore('messages', () => {
       id: `temp-${clientMessageId}`,
       conversationId,
       senderId: auth.user?.id ?? '',
+      type: 'user',
       body,
       parentMessageId,
       attachments: [],
@@ -136,6 +137,7 @@ export const useMessagesStore = defineStore('messages', () => {
       id: `temp-${clientMessageId}`,
       conversationId,
       senderId: auth.user?.id ?? '',
+      type: 'user',
       body: body || null,
       parentMessageId,
       attachments: [

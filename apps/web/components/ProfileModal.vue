@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { LogOut, X } from 'lucide-vue-next';
-import { AVATAR, getApiError } from '@yap/contracts';
+import { ChevronDown, LogOut, X } from 'lucide-vue-next';
+import { AVATAR, getApiError, type ConversationDTO } from '@yap/contracts';
 
 const emit = defineEmits<{
   close: [];
@@ -9,6 +9,35 @@ const emit = defineEmits<{
 
 const auth = useAuthStore();
 const toasts = useToastsStore();
+const conversations = useConversationsStore();
+
+const blocked = ref<ConversationDTO[]>([]);
+const unblocking = ref<Set<string>>(new Set());
+const blockedOpen = ref(false);
+
+async function loadBlocked() {
+  try {
+    blocked.value = await conversations.fetchBlocked();
+  } catch {
+    // Non-critical; the section just stays empty.
+  }
+}
+
+async function unblock(conv: ConversationDTO) {
+  if (unblocking.value.has(conv.id)) return;
+  unblocking.value.add(conv.id);
+  try {
+    await conversations.unblock(conv.id);
+    blocked.value = blocked.value.filter((c) => c.id !== conv.id);
+    toasts.success(`Unblocked ${conv.displayName}`);
+  } catch (e) {
+    toasts.error(getApiError(e)?.message ?? 'Could not unblock');
+  } finally {
+    unblocking.value.delete(conv.id);
+  }
+}
+
+onMounted(loadBlocked);
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFile = ref<File | null>(null);
@@ -196,6 +225,38 @@ onBeforeUnmount(clearPreview);
           </button>
         </div>
         <p v-if="nameError" class="mt-1 text-sm text-destructive-foreground">{{ nameError }}</p>
+      </div>
+
+      <div v-if="blocked.length" class="mt-6">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between text-sm font-medium"
+          :aria-expanded="blockedOpen"
+          @click="blockedOpen = !blockedOpen"
+        >
+          <span>Blocked groups ({{ blocked.length }})</span>
+          <ChevronDown
+            class="h-4 w-4 text-muted-foreground transition-transform"
+            :class="blockedOpen ? 'rotate-180' : ''"
+          />
+        </button>
+        <ul v-if="blockedOpen" class="mt-2 space-y-1">
+          <li
+            v-for="conv in blocked"
+            :key="conv.id"
+            class="flex items-center gap-2 rounded-md border border-border px-2 py-1.5"
+          >
+            <span class="min-w-0 flex-1 truncate text-sm">{{ conv.displayName }}</span>
+            <button
+              type="button"
+              :disabled="unblocking.has(conv.id)"
+              class="shrink-0 rounded-md px-2 py-1 text-xs text-primary hover:bg-muted disabled:opacity-50"
+              @click="unblock(conv)"
+            >
+              Unblock
+            </button>
+          </li>
+        </ul>
       </div>
 
       <button

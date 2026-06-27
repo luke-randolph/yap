@@ -19,6 +19,10 @@ export function useRealtimeSync(): void {
     conversations.addOrReplace(payload.conversation);
   }
 
+  function onConversationRemoved(payload: { conversationId: string }) {
+    conversations.remove(payload.conversationId);
+  }
+
   function onMessageUpdated(payload: { conversationId: string; message: MessageDTO }) {
     messages.handleUpdated(payload);
   }
@@ -46,6 +50,7 @@ export function useRealtimeSync(): void {
     if (!sock) return;
     sock.on('conversation.created', onConversationCreated);
     sock.on('conversation.updated', onConversationUpdated);
+    sock.on('conversation.removed', onConversationRemoved);
     sock.on('message.created', onMessageCreated);
     sock.on('message.updated', onMessageUpdated);
   });
@@ -54,6 +59,7 @@ export function useRealtimeSync(): void {
     const sock = socket.get();
     sock?.off('conversation.created', onConversationCreated);
     sock?.off('conversation.updated', onConversationUpdated);
+    sock?.off('conversation.removed', onConversationRemoved);
     sock?.off('message.created', onMessageCreated);
     sock?.off('message.updated', onMessageUpdated);
   });

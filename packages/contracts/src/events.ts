@@ -14,11 +14,7 @@ export interface ServerToClientEvents {
   'message.deleted': (payload: { conversationId: string; messageId: string }) => void;
   'conversation.created': (payload: { conversation: ConversationDTO }) => void;
   'conversation.updated': (payload: { conversation: ConversationDTO }) => void;
-  'participant.added': (payload: {
-    conversationId: string;
-    participant: ConversationDTO['participants'][number];
-  }) => void;
-  'participant.left': (payload: { conversationId: string; userId: string }) => void;
+  'conversation.removed': (payload: { conversationId: string }) => void;
 }
 
 export interface ClientToServerEvents {
