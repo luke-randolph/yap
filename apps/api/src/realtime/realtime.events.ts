@@ -5,6 +5,7 @@ export const REALTIME_EVENTS = {
   messageUpdated: 'realtime.message.updated',
   conversationCreated: 'realtime.conversation.created',
   conversationUpdated: 'realtime.conversation.updated',
+  conversationRemoved: 'realtime.conversation.removed',
 } as const;
 
 export interface MessageCreatedEvent {
@@ -24,4 +25,9 @@ export interface ConversationCreatedEvent {
 
 export interface ConversationUpdatedEvent {
   conversationByUserId: Map<string, ConversationDTO>;
+}
+
+export interface ConversationRemovedEvent {
+  conversationId: string;
+  userIds: string[];
 }

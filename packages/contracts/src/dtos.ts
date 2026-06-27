@@ -25,10 +25,19 @@ export interface ConversationDTO {
   isStarred: boolean;
 }
 
+export interface ConversationParticipantsDTO {
+  active: ParticipantDTO[];
+  /** excludes blockers */
+  former: ParticipantDTO[];
+}
+
+export type MessageType = 'user' | 'system';
+
 export interface MessageDTO {
   id: string;
   conversationId: string;
   senderId: string;
+  type: MessageType;
   body: string | null;
   parentMessageId: string | null;
   attachments: MessageAttachmentDTO[];

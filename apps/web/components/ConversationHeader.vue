@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Menu, Pencil, X } from 'lucide-vue-next';
+import { Check, Menu, Pencil, Users, X } from 'lucide-vue-next';
 import { getApiError, type ConversationDTO } from '@yap/contracts';
 
 const props = defineProps<{
@@ -17,6 +17,7 @@ const discPeople = computed(() => props.conversation.participants.map((p) => p.u
 const shownDiscs = computed(() => discPeople.value.slice(0, MAX_DISCS));
 const extraDiscs = computed(() => Math.max(0, discPeople.value.length - MAX_DISCS));
 
+const showParticipants = ref(false);
 const editingName = ref(false);
 const nameDraft = ref('');
 const savingName = ref(false);
@@ -87,7 +88,7 @@ async function saveName() {
         <X class="h-4 w-4" />
       </button>
     </div>
-    <div v-else class="flex items-center gap-2">
+    <div v-else class="flex items-center gap-4">
       <button
         type="button"
         class="-ml-1 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
@@ -111,19 +112,41 @@ async function saveName() {
         </span>
       </div>
       <h2 class="text-lg font-medium">{{ conversation.displayName }}</h2>
-      <button
-        v-if="conversation.isGroup"
-        type="button"
-        class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-        title="Rename group"
-        @click="startEditName"
-      >
-        <Pencil class="h-3.5 w-3.5" />
-      </button>
+      <div>
+        <button
+          v-if="conversation.isGroup"
+          type="button"
+          class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Rename group"
+          @click="startEditName"
+        >
+          <Pencil class="h-3.5 w-3.5" />
+        </button>
+        <button
+          v-if="conversation.isGroup"
+          type="button"
+          class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Members"
+          @click="showParticipants = true"
+        >
+          <Users class="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
     <p v-if="nameError" class="mt-1 text-xs text-destructive-foreground">{{ nameError }}</p>
-    <p v-else-if="conversation.isGroup && !editingName" class="text-xs text-muted-foreground">
+    <button
+      v-else-if="conversation.isGroup && !editingName"
+      type="button"
+      class="w-fit text-xs text-muted-foreground hover:text-foreground hover:underline"
+      @click="showParticipants = true"
+    >
       {{ conversation.participants.length }} members
-    </p>
+    </button>
+
+    <ParticipantsModal
+      v-if="showParticipants"
+      :conversation="conversation"
+      @close="showParticipants = false"
+    />
   </header>
 </template>

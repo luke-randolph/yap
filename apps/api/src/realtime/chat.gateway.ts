@@ -24,6 +24,7 @@ import { MessagesService } from '../messages/messages.service';
 import {
   REALTIME_EVENTS,
   type ConversationCreatedEvent,
+  type ConversationRemovedEvent,
   type ConversationUpdatedEvent,
   type MessageCreatedEvent,
   type MessageUpdatedEvent,
@@ -162,6 +163,13 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     for (const [userId, conversation] of event.conversationByUserId) {
       this.server.to(userRoom(userId)).emit('conversation.updated', { conversation });
     }
+  }
+
+  @OnEvent(REALTIME_EVENTS.conversationRemoved)
+  onConversationRemoved(event: ConversationRemovedEvent): void {
+    const rooms = event.userIds.map(userRoom);
+    if (rooms.length === 0) return;
+    this.server.to(rooms).emit('conversation.removed', { conversationId: event.conversationId });
   }
 }
 

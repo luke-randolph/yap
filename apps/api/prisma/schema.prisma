@@ -57,12 +57,12 @@ model RefreshToken {
 }
 
 model Conversation {
-  id            String    @id @default(cuid())
-  isGroup       Boolean   @default(false)
-  name          String? // null for DMs and unnamed groups; computed at read time
-  createdById   String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  isGroup        Boolean   @default(false)
+  name           String? // null for DMs and unnamed groups; computed at read time
+  createdById    String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
   lastActivityAt DateTime? // last activity (currently messages); denormalized for cheap sidebar ordering
 
   participants ConversationParticipant[]
@@ -77,6 +77,7 @@ model ConversationParticipant {
   userId            String
   joinedAt          DateTime  @default(now())
   leftAt            DateTime?
+  blockedAt         DateTime?
   lastReadMessageId String?
   isAdmin           Boolean   @default(false)
   isStarred         Boolean   @default(false)
@@ -89,13 +90,19 @@ model ConversationParticipant {
   @@index([conversationId])
 }
 
+enum MessageType {
+  user
+  system
+}
+
 model Message {
-  id              String    @id @default(cuid())
+  id              String      @id @default(cuid())
   conversationId  String
   senderId        String
+  type            MessageType @default(user)
   body            String? // null when only attachments
   parentMessageId String? // self-reference for replies
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime    @default(now())
   editedAt        DateTime?
   deletedAt       DateTime?
 

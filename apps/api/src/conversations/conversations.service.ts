@@ -9,7 +9,9 @@ import { Prisma } from '@prisma/client';
 import {
   CONVERSATION_ERROR_CODES,
   type ConversationDTO,
+  type ConversationParticipantsDTO,
   type CreateConversationInput,
+  type MessageDTO,
   type ParticipantDTO,
   type UpdateConversationInput,
 } from '@yap/contracts';
@@ -17,7 +19,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   REALTIME_EVENTS,
   type ConversationCreatedEvent,
+  type ConversationRemovedEvent,
   type ConversationUpdatedEvent,
+  type MessageCreatedEvent,
 } from '../realtime/realtime.events';
 import { userPublicSelect } from '../users/user.selects';
 
@@ -132,6 +136,226 @@ export class ConversationsService {
     const event: ConversationUpdatedEvent = { conversationByUserId: byUserId };
     this.events.emit(REALTIME_EVENTS.conversationUpdated, event);
     return actorDto;
+  }
+
+  async addParticipants(
+    currentUserId: string,
+    conversationId: string,
+    emails: string[],
+  ): Promise<ConversationDTO> {
+    await this.assertParticipant(currentUserId, conversationId);
+
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { isGroup: true },
+    });
+    if (!conversation) {
+      throw new NotFoundException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.conversationNotFound,
+          message: 'Conversation not found',
+        },
+      });
+    }
+    if (!conversation.isGroup) {
+      throw new BadRequestException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notGroupConversation,
+          message: 'Only group conversations can have participants added',
+        },
+      });
+    }
+
+    const deduped = Array.from(new Set(emails));
+    const users = await this.prisma.user.findMany({
+      where: { email: { in: deduped }, deletedAt: null },
+      select: { id: true, email: true, displayName: true },
+    });
+    const foundEmails = new Set(users.map((u) => u.email));
+    const missing = deduped.filter((email) => !foundEmails.has(email));
+    if (missing.length) throw new BadRequestException(unknownEmailsError(missing));
+
+    const existing = await this.prisma.conversationParticipant.findMany({
+      where: { conversationId, userId: { in: users.map((u) => u.id) } },
+      select: { userId: true, leftAt: true, blockedAt: true },
+    });
+    const existingByUserId = new Map(existing.map((p) => [p.userId, p]));
+
+    const blocked = users.filter((u) => existingByUserId.get(u.id)?.blockedAt);
+    if (blocked.length) {
+      throw new BadRequestException(participantsBlockedError(blocked.map((u) => u.email)));
+    }
+
+    const toAdd = users.filter((u) => {
+      const p = existingByUserId.get(u.id);
+      return !p || p.leftAt;
+    });
+    if (toAdd.length) {
+      await this.prisma.$transaction(
+        toAdd.map((u) =>
+          this.prisma.conversationParticipant.upsert({
+            where: { conversationId_userId: { conversationId, userId: u.id } },
+            create: { conversationId, userId: u.id },
+            update: { leftAt: null, blockedAt: null, joinedAt: new Date(), lastReadMessageId: null },
+          }),
+        ),
+      );
+    }
+
+    const row = await this.prisma.conversation.findUniqueOrThrow({
+      where: { id: conversationId },
+      include: conversationInclude,
+    });
+    const { actorDto, byUserId } = this.perUserDtos(row, currentUserId);
+    this.events.emit(REALTIME_EVENTS.conversationUpdated, { conversationByUserId: byUserId });
+
+    // After the roster update so freshly-added users already have the
+    // conversation when the join notice arrives.
+    for (const u of toAdd) {
+      await this.postSystemMessage(conversationId, u.id, `${u.displayName} joined the group`);
+    }
+    return actorDto;
+  }
+
+  async leave(currentUserId: string, conversationId: string): Promise<void> {
+    await this.assertParticipant(currentUserId, conversationId);
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+      data: { leftAt: new Date(), isStarred: false },
+    });
+    await this.announceDeparture(currentUserId, conversationId);
+  }
+
+  async block(currentUserId: string, conversationId: string): Promise<void> {
+    await this.assertParticipant(currentUserId, conversationId);
+    const now = new Date();
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+      data: { leftAt: now, blockedAt: now, isStarred: false },
+    });
+    // Same notice as leaving; blocking is private and shouldn't be revealed.
+    await this.announceDeparture(currentUserId, conversationId);
+  }
+
+  private async announceDeparture(userId: string, conversationId: string): Promise<void> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { isGroup: true },
+    });
+    if (conversation?.isGroup) {
+      const user = await this.prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { displayName: true },
+      });
+      await this.postSystemMessage(conversationId, userId, `${user.displayName} left the group`);
+    }
+    await this.emitDeparture(conversationId, userId);
+  }
+
+  async unblock(currentUserId: string, conversationId: string): Promise<void> {
+    const participant = await this.prisma.conversationParticipant.findUnique({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+      select: { blockedAt: true },
+    });
+    if (!participant?.blockedAt) {
+      throw new BadRequestException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notBlocked,
+          message: 'Conversation is not blocked',
+        },
+      });
+    }
+    await this.prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId: currentUserId } },
+      data: { blockedAt: null },
+    });
+  }
+
+  async getParticipants(
+    currentUserId: string,
+    conversationId: string,
+  ): Promise<ConversationParticipantsDTO> {
+    await this.assertParticipant(currentUserId, conversationId);
+    const rows = await this.prisma.conversationParticipant.findMany({
+      where: { conversationId },
+      include: { user: { select: userPublicSelect } },
+      orderBy: { joinedAt: 'asc' },
+    });
+    const toDto = (p: (typeof rows)[number]): ParticipantDTO => ({
+      user: p.user,
+      joinedAt: p.joinedAt.toISOString(),
+      leftAt: p.leftAt?.toISOString() ?? null,
+      lastReadMessageId: p.lastReadMessageId,
+      isAdmin: p.isAdmin,
+    });
+    return {
+      active: rows.filter((p) => !p.leftAt).map(toDto),
+      former: rows.filter((p) => p.leftAt && !p.blockedAt).map(toDto),
+    };
+  }
+
+  async listBlocked(currentUserId: string): Promise<ConversationDTO[]> {
+    const rows = await this.prisma.conversation.findMany({
+      where: { participants: { some: { userId: currentUserId, blockedAt: { not: null } } } },
+      include: conversationInclude,
+      orderBy: [{ lastActivityAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+    });
+    return rows.map((row) => this.toDto(row, currentUserId));
+  }
+
+  // Tells remaining members the roster shrank and tells the departed viewer to drop it.
+  private async emitDeparture(conversationId: string, departedUserId: string): Promise<void> {
+    const row = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: conversationInclude,
+    });
+    if (row && row.participants.length) {
+      const byUserId = new Map<string, ConversationDTO>();
+      for (const p of row.participants) byUserId.set(p.userId, this.toDto(row, p.userId));
+      this.events.emit(REALTIME_EVENTS.conversationUpdated, { conversationByUserId: byUserId });
+    }
+    const removed: ConversationRemovedEvent = { conversationId, userIds: [departedUserId] };
+    this.events.emit(REALTIME_EVENTS.conversationRemoved, removed);
+  }
+
+  private async postSystemMessage(
+    conversationId: string,
+    subjectUserId: string,
+    text: string,
+  ): Promise<void> {
+    const now = new Date();
+    const [message, , participants] = await this.prisma.$transaction([
+      this.prisma.message.create({
+        data: { conversationId, senderId: subjectUserId, type: 'system', body: text },
+      }),
+      this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: { lastActivityAt: now },
+      }),
+      this.prisma.conversationParticipant.findMany({
+        where: { conversationId, leftAt: null },
+        select: { userId: true },
+      }),
+    ]);
+
+    const dto: MessageDTO = {
+      id: message.id,
+      conversationId: message.conversationId,
+      senderId: message.senderId,
+      type: 'system',
+      body: message.body,
+      parentMessageId: message.parentMessageId,
+      attachments: [],
+      reactions: [],
+      createdAt: message.createdAt.toISOString(),
+      editedAt: message.editedAt?.toISOString() ?? null,
+      deletedAt: message.deletedAt?.toISOString() ?? null,
+    };
+    const event: MessageCreatedEvent = {
+      message: dto,
+      participantUserIds: participants.map((p) => p.userId),
+    };
+    this.events.emit(REALTIME_EVENTS.messageCreated, event);
   }
 
   async listForUser(currentUserId: string): Promise<ConversationDTO[]> {
@@ -278,6 +502,16 @@ function unknownEmailsError(missing: string[]) {
       code: CONVERSATION_ERROR_CODES.unknownEmails,
       message: `Unknown emails: ${missing.join(', ')}`,
       details: { unknownEmails: missing },
+    },
+  };
+}
+
+function participantsBlockedError(blocked: string[]) {
+  return {
+    error: {
+      code: CONVERSATION_ERROR_CODES.participantsBlocked,
+      message: `Blocked this group and can't be re-added: ${blocked.join(', ')}`,
+      details: { blockedEmails: blocked },
     },
   };
 }

@@ -277,6 +277,7 @@ function toMessageDto(row: MessageWithRelations): MessageDTO {
     id: row.id,
     conversationId: row.conversationId,
     senderId: row.senderId,
+    type: row.type,
     body: row.body,
     parentMessageId: row.parentMessageId,
     attachments: row.attachments.map((a) => ({

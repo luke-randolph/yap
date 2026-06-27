@@ -16,7 +16,9 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   MESSAGE_IMAGE,
+  type AddParticipantsInput,
   type ConversationDTO,
+  type ConversationParticipantsDTO,
   type CreateConversationInput,
   type MessageDTO,
   type MessagesQueryInput,
@@ -24,6 +26,7 @@ import {
   type SendImageMessageInput,
   type SendMessageInput,
   type UpdateConversationInput,
+  addParticipantsSchema,
   createConversationSchema,
   messagesQuerySchema,
   reactMessageSchema,
@@ -56,6 +59,11 @@ export class ConversationsController {
   @Get()
   async list(@CurrentUser() current: AccessTokenPayload): Promise<ConversationDTO[]> {
     return this.conversations.listForUser(current.sub);
+  }
+
+  @Get('blocked')
+  async listBlocked(@CurrentUser() current: AccessTokenPayload): Promise<ConversationDTO[]> {
+    return this.conversations.listBlocked(current.sub);
   }
 
   @Patch(':conversationId')
@@ -100,6 +108,50 @@ export class ConversationsController {
     @Param('conversationId') conversationId: string,
   ): Promise<void> {
     await this.conversations.setStarred(current.sub, conversationId, false);
+  }
+
+  @Get(':conversationId/participants')
+  async participants(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<ConversationParticipantsDTO> {
+    return this.conversations.getParticipants(current.sub, conversationId);
+  }
+
+  @Post(':conversationId/participants')
+  async addParticipants(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Body(new ZodValidationPipe(addParticipantsSchema)) body: AddParticipantsInput,
+  ): Promise<ConversationDTO> {
+    return this.conversations.addParticipants(current.sub, conversationId, body.participantEmails);
+  }
+
+  @Post(':conversationId/leave')
+  @HttpCode(204)
+  async leave(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<void> {
+    await this.conversations.leave(current.sub, conversationId);
+  }
+
+  @Post(':conversationId/block')
+  @HttpCode(204)
+  async block(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<void> {
+    await this.conversations.block(current.sub, conversationId);
+  }
+
+  @Post(':conversationId/unblock')
+  @HttpCode(204)
+  async unblock(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<void> {
+    await this.conversations.unblock(current.sub, conversationId);
   }
 
   @Get(':conversationId/messages')

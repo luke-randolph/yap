@@ -33,13 +33,16 @@ function isFromCurrentUser(senderId: string): boolean {
 }
 
 function isFirstInMessageRun(index: number): boolean {
-  return index === 0 || items.value[index - 1]?.senderId !== items.value[index]?.senderId;
+  const prev = items.value[index - 1];
+  return index === 0 || prev?.senderId !== items.value[index]?.senderId || prev?.type === 'system';
 }
 
 function isLastInMessageRun(index: number): boolean {
+  const next = items.value[index + 1];
   return (
     index === items.value.length - 1 ||
-    items.value[index + 1]?.senderId !== items.value[index]?.senderId
+    next?.senderId !== items.value[index]?.senderId ||
+    next?.type === 'system'
   );
 }
 
@@ -83,9 +86,9 @@ async function scrollToBottom() {
 
 watch(
   () => props.conversation.id,
-  (id) => {
+  async (id) => {
     messages.clearReplyTarget();
-    messages.ensureLoaded(id);
+    await messages.ensureLoaded(id);
     scrollToBottom();
   },
   { immediate: true },
@@ -108,9 +111,14 @@ watch(() => items.value.length, scrollToBottom);
       </p>
 
       <ul v-else class="flex flex-col gap-2">
+        <template v-for="(m, i) in items" :key="m.clientMessageId ?? m.id">
+        <li v-if="m.type === 'system'" class="my-1 flex justify-center">
+          <span class="rounded-full bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
+            {{ m.body }}
+          </span>
+        </li>
         <li
-          v-for="(m, i) in items"
-          :key="m.clientMessageId ?? m.id"
+          v-else
           class="flex gap-1"
           :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
         >
@@ -200,6 +208,7 @@ watch(() => items.value.length, scrollToBottom);
             </span>
           </div>
         </li>
+        </template>
       </ul>
     </div>
 

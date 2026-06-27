@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type {
   ConversationDTO,
+  ConversationParticipantsDTO,
   CreateConversationInput,
   UpdateConversationInput,
 } from '@yap/contracts';
@@ -64,6 +65,48 @@ export const useConversationsStore = defineStore('conversations', () => {
     return conv;
   }
 
+  function remove(id: string) {
+    list.value = list.value.filter((c) => c.id !== id);
+    if (selectedId.value === id) selectedId.value = null;
+  }
+
+  async function fetchParticipants(id: string): Promise<ConversationParticipantsDTO> {
+    const api = useApi();
+    return api<ConversationParticipantsDTO>(`/conversations/${id}/participants`);
+  }
+
+  async function addParticipants(id: string, emails: string[]): Promise<ConversationDTO> {
+    const api = useApi();
+    const conv = await api<ConversationDTO>(`/conversations/${id}/participants`, {
+      method: 'POST',
+      body: { participantEmails: emails },
+    });
+    addOrReplace(conv);
+    return conv;
+  }
+
+  async function leave(id: string) {
+    const api = useApi();
+    await api(`/conversations/${id}/leave`, { method: 'POST' });
+    remove(id);
+  }
+
+  async function block(id: string) {
+    const api = useApi();
+    await api(`/conversations/${id}/block`, { method: 'POST' });
+    remove(id);
+  }
+
+  async function fetchBlocked(): Promise<ConversationDTO[]> {
+    const api = useApi();
+    return api<ConversationDTO[]>('/conversations/blocked');
+  }
+
+  async function unblock(id: string) {
+    const api = useApi();
+    await api(`/conversations/${id}/unblock`, { method: 'POST' });
+  }
+
   function markUnread(conversationId: string) {
     if (conversationId === selectedId.value) return;
     const conv = list.value.find((c) => c.id === conversationId);
@@ -123,6 +166,13 @@ export const useConversationsStore = defineStore('conversations', () => {
     toggleStar,
     create,
     update,
+    remove,
+    fetchParticipants,
+    addParticipants,
+    leave,
+    block,
+    fetchBlocked,
+    unblock,
     select,
     reset,
   };
