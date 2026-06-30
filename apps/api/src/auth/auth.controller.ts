@@ -8,17 +8,22 @@ import {
   Post,
   Req,
   Res,
+  UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import {
   type AuthTokenResponse,
+  type RequestAccessInput,
   type RequestOtpInput,
   type VerifyOtpInput,
+  requestAccessSchema,
   requestOtpSchema,
   verifyOtpSchema,
 } from '@yap/contracts';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { CurrentUser } from './current-user.decorator';
 import { AuthService, type TokenIssuance } from './auth.service';
+import { JwtAuthGuard, type AccessTokenPayload } from './jwt-auth.guard';
 
 const REFRESH_COOKIE_NAME = 'yap_refresh';
 const REFRESH_COOKIE_PATH = '/auth';
@@ -51,6 +56,38 @@ export class AuthController {
     });
     setRefreshCookie(res, issuance);
     return toAuthResponse(issuance);
+  }
+
+  @Post('demo')
+  @HttpCode(HttpStatus.OK)
+  async demo(
+    @Headers('user-agent') userAgent: string | undefined,
+    @Ip() ip: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthTokenResponse> {
+    const issuance = await this.auth.createDemoSession({ userAgent, ipAddress: ip });
+    setRefreshCookie(res, issuance);
+    return toAuthResponse(issuance);
+  }
+
+  @Post('access-request')
+  @HttpCode(HttpStatus.OK)
+  async requestAccess(
+    @Body(new ZodValidationPipe(requestAccessSchema)) body: RequestAccessInput,
+  ): Promise<{ ok: true }> {
+    await this.auth.requestAccess(body.email, body.displayName);
+    return { ok: true };
+  }
+
+  @Post('demo/exit')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  async exitDemo(
+    @CurrentUser() current: AccessTokenPayload,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.auth.exitDemo(current.sub);
+    res.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
   }
 
   @Post('refresh')

@@ -5,6 +5,8 @@ import { AuthService } from './auth.service';
 export interface AccessTokenPayload {
   sub: string;
   email: string;
+  isAdmin: boolean;
+  isGuest: boolean;
   iat: number;
   exp: number;
 }

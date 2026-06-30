@@ -6,6 +6,7 @@ import { randomBytes, randomInt } from 'node:crypto';
 import { AUTH_ERROR_CODES, type AuthTokenResponse } from '@yap/contracts';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { DemoService } from '../demo/demo.service';
 import { type AccessTokenPayload } from './jwt-auth.guard';
 
 const OTP_TTL_MIN = 10;
@@ -25,7 +26,65 @@ export class AuthService {
     private readonly email: EmailService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly demo: DemoService,
   ) {}
+
+  // A signup is allowed only for emails that already have an account
+  // (existing members, including the admin) or an approved access request.
+  private async isSignupAllowed(emailAddress: string): Promise<boolean> {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: emailAddress },
+      select: { id: true },
+    });
+    if (existing) return true;
+    const request = await this.prisma.accessRequest.findUnique({
+      where: { email: emailAddress },
+      select: { status: true },
+    });
+    return request?.status === 'approved';
+  }
+
+  // Records (or refreshes) a pending access request for a non-allowlisted email
+  // and pings the admin. Idempotent and respects prior approve/deny decisions.
+  async requestAccess(emailAddress: string, displayName?: string): Promise<void> {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: emailAddress },
+      select: { id: true },
+    });
+    if (existing) return;
+
+    const current = await this.prisma.accessRequest.findUnique({ where: { email: emailAddress } });
+    if (current) {
+      // Respect an existing approve/deny; only refresh a still-pending name.
+      if (current.status === 'pending' && displayName && displayName !== current.displayName) {
+        await this.prisma.accessRequest.update({
+          where: { email: emailAddress },
+          data: { displayName },
+        });
+      }
+      return;
+    }
+
+    await this.prisma.accessRequest.create({
+      data: { email: emailAddress, displayName, status: 'pending' },
+    });
+    void this.email
+      .sendAccessRequested({ requesterEmail: emailAddress, displayName })
+      .catch(() => undefined);
+  }
+
+  // Spins up a throwaway sandboxed guest and logs it in immediately.
+  async createDemoSession(sessionMeta: {
+    userAgent?: string;
+    ipAddress?: string;
+  }): Promise<TokenIssuance> {
+    const guestId = await this.demo.createGuestWithWorld();
+    return this.issueTokens(guestId, sessionMeta);
+  }
+
+  async exitDemo(userId: string): Promise<void> {
+    await this.demo.deleteGuestAndSandbox(userId);
+  }
 
   // Shared by the HTTP guard and the websocket gateway so the secret name and
   // payload type live in one place. Throws on an invalid or expired token.
@@ -36,6 +95,15 @@ export class AuthService {
   }
 
   async requestOtp(emailAddress: string, ipAddress?: string): Promise<void> {
+    if (!(await this.isSignupAllowed(emailAddress))) {
+      throw new BadRequestException({
+        error: {
+          code: AUTH_ERROR_CODES.emailNotAllowlisted,
+          message: 'Yap is approval-only right now. Request access to join.',
+        },
+      });
+    }
+
     const windowStart = new Date(Date.now() - OTP_REQUEST_WINDOW_MIN * 60_000);
     const recentCount = await this.prisma.emailOtp.count({
       where: { email: emailAddress, createdAt: { gte: windowStart } },
@@ -108,6 +176,17 @@ export class AuthService {
       });
     }
 
+    // Defense in depth: never create an account for a non-allowlisted email,
+    // even if an OTP somehow exists.
+    if (!existing && !(await this.isSignupAllowed(emailAddress))) {
+      throw new BadRequestException({
+        error: {
+          code: AUTH_ERROR_CODES.emailNotAllowlisted,
+          message: 'Yap is approval-only right now. Request access to join.',
+        },
+      });
+    }
+
     const [, user] = await this.prisma.$transaction([
       this.prisma.emailOtp.update({
         where: { id: otp.id },
@@ -171,9 +250,10 @@ export class AuthService {
   ): Promise<TokenIssuance> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
+    const isGuest = user.kind === 'guest';
     const accessTtl = Number(this.config.get<string>('JWT_ACCESS_TTL_SECONDS') ?? 900);
     const accessToken = await this.jwt.signAsync(
-      { sub: user.id, email: user.email },
+      { sub: user.id, email: user.email, isAdmin: user.isAdmin, isGuest },
       { secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'), expiresIn: accessTtl },
     );
 
@@ -202,6 +282,8 @@ export class AuthService {
         email: user.email,
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
+        isAdmin: user.isAdmin,
+        isGuest,
       },
     };
   }

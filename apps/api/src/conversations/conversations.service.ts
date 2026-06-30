@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma } from '@prisma/client';
+import { Prisma, type UserKind } from '@prisma/client';
 import {
   CONVERSATION_ERROR_CODES,
   type ConversationDTO,
@@ -52,7 +52,7 @@ export class ConversationsService {
   async create(currentUserId: string, input: CreateConversationInput): Promise<ConversationDTO> {
     const currentUser = await this.prisma.user.findUniqueOrThrow({
       where: { id: currentUserId },
-      select: { id: true, email: true },
+      select: { id: true, email: true, kind: true },
     });
 
     const dedupedEmails = Array.from(new Set(input.participantEmails));
@@ -63,11 +63,13 @@ export class ConversationsService {
 
     const others = await this.prisma.user.findMany({
       where: { email: { in: otherEmails }, deletedAt: null },
-      select: { id: true, email: true },
+      select: { id: true, email: true, kind: true },
     });
     const foundEmails = new Set(others.map((u) => u.email));
     const missing = otherEmails.filter((email) => !foundEmails.has(email));
     if (missing.length) throw new BadRequestException(unknownEmailsError(missing));
+
+    assertRecipientsAllowed(currentUser.kind, others);
 
     const otherIds = others.map((u) => u.id);
     const isGroup = otherIds.length > 1;
@@ -169,11 +171,17 @@ export class ConversationsService {
     const deduped = Array.from(new Set(emails));
     const users = await this.prisma.user.findMany({
       where: { email: { in: deduped }, deletedAt: null },
-      select: { id: true, email: true, displayName: true },
+      select: { id: true, email: true, displayName: true, kind: true },
     });
     const foundEmails = new Set(users.map((u) => u.email));
     const missing = deduped.filter((email) => !foundEmails.has(email));
     if (missing.length) throw new BadRequestException(unknownEmailsError(missing));
+
+    const me = await this.prisma.user.findUniqueOrThrow({
+      where: { id: currentUserId },
+      select: { kind: true },
+    });
+    assertRecipientsAllowed(me.kind, users);
 
     const existing = await this.prisma.conversationParticipant.findMany({
       where: { conversationId, userId: { in: users.map((u) => u.id) } },
@@ -494,6 +502,26 @@ function computeDisplayName(
   const others = participants.filter((p) => p.user.id !== currentUserId);
   if (!row.isGroup) return others[0]?.user.displayName ?? 'Direct message';
   return others.map((p) => p.user.displayName).join(', ') || 'Group';
+}
+
+// Sandbox isolation: a guest may only converse with demo characters, and a real
+// member only with other members. Defends the create/add paths against
+// hand-crafted requests that bypass the filtered user search.
+function assertRecipientsAllowed(actorKind: UserKind, recipients: { email: string; kind: UserKind }[]) {
+  const requiredKind: UserKind = actorKind === 'guest' ? 'demo' : 'member';
+  const disallowed = recipients.filter((r) => r.kind !== requiredKind);
+  if (disallowed.length) {
+    throw new ForbiddenException({
+      error: {
+        code: CONVERSATION_ERROR_CODES.recipientsNotAllowed,
+        message:
+          actorKind === 'guest'
+            ? 'Demo accounts can only message the sample users.'
+            : 'These recipients are not available.',
+        details: { recipients: disallowed.map((r) => r.email) },
+      },
+    });
+  }
 }
 
 function unknownEmailsError(missing: string[]) {

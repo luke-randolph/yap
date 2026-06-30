@@ -5,6 +5,7 @@ import { AVATAR, getApiError, type ConversationDTO } from '@yap/contracts';
 const emit = defineEmits<{
   close: [];
   logout: [];
+  'exit-demo': [];
 }>();
 
 const auth = useAuthStore();
@@ -262,10 +263,10 @@ onBeforeUnmount(clearPreview);
       <button
         type="button"
         class="mt-6 flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-        @click="emit('logout')"
+        @click="auth.user?.isGuest ? emit('exit-demo') : emit('logout')"
       >
         <LogOut class="h-4 w-4" />
-        Log out
+        {{ auth.user?.isGuest ? 'Exit demo' : 'Log out' }}
       </button>
     </div>
   </div>

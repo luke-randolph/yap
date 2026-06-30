@@ -3,6 +3,21 @@ export interface UserPublicDTO {
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  /** Only populated for the authenticated user (auth response + /users/me). */
+  isAdmin?: boolean;
+  /** Only populated for the authenticated user; true for sandboxed demo guests. */
+  isGuest?: boolean;
+}
+
+export type AccessStatus = 'pending' | 'approved' | 'denied';
+
+export interface AccessRequestDTO {
+  id: string;
+  email: string;
+  displayName: string | null;
+  status: AccessStatus;
+  note: string | null;
+  createdAt: string;
 }
 
 export interface ParticipantDTO {
