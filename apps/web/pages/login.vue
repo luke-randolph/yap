@@ -1,20 +1,30 @@
 <script setup lang="ts">
-import { getApiError } from '@yap/contracts';
+import { AUTH_ERROR_CODES, getApiError } from '@yap/contracts';
 
 const auth = useAuthStore();
 
-const step = ref<'email' | 'code' | 'name'>('email');
+const step = ref<'email' | 'code' | 'name' | 'request' | 'requested'>('email');
 const email = ref('');
 const code = ref('');
 const displayName = ref('');
 const error = ref<string | null>(null);
 const submitting = ref(false);
+const demoing = ref(false);
 
-const heading = computed(() => (step.value === 'name' ? 'One last step' : 'Sign in'));
+const heading = computed(() => {
+  if (step.value === 'name') return 'One last step';
+  if (step.value === 'request') return 'Request access';
+  if (step.value === 'requested') return 'Request sent';
+  return 'Sign in';
+});
 
 const subtitle = computed(() => {
   if (step.value === 'email') return "We'll email you a 6-digit code.";
   if (step.value === 'code') return `Code sent to ${email.value}.`;
+  if (step.value === 'request')
+    return "Full access to Yap is currently request-only. Enter your email and we'll review your request!";
+  if (step.value === 'requested')
+    return `Thanks! We'll email ${email.value} once you're approved. Want a look around now? Try the demo.`;
   return 'Pick a display name to finish creating your account.';
 });
 
@@ -25,9 +35,44 @@ async function submitEmail() {
     await auth.requestOtp(email.value);
     step.value = 'code';
   } catch (e) {
+    if (getApiError(e)?.code === AUTH_ERROR_CODES.emailNotAllowlisted) {
+      step.value = 'request';
+      return;
+    }
     error.value = extractMessage(e) ?? 'Failed to send code';
   } finally {
     submitting.value = false;
+  }
+}
+
+function goToRequest() {
+  error.value = null;
+  step.value = 'request';
+}
+
+async function submitRequest() {
+  error.value = null;
+  submitting.value = true;
+  try {
+    await auth.requestAccess(email.value);
+    step.value = 'requested';
+  } catch (e) {
+    error.value = extractMessage(e) ?? 'Could not send your request';
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function tryDemo() {
+  error.value = null;
+  demoing.value = true;
+  try {
+    await auth.demoLogin();
+    await navigateTo('/');
+  } catch (e) {
+    error.value = extractMessage(e) ?? 'Could not start the demo';
+  } finally {
+    demoing.value = false;
   }
 }
 
@@ -103,6 +148,31 @@ function extractMessage(e: unknown): string | null {
         >
           {{ submitting ? 'Sending...' : 'Send code' }}
         </button>
+
+        <p class="text-center text-sm text-muted-foreground">
+          Not signed up yet?
+          <button
+            type="button"
+            class="font-medium text-primary hover:underline"
+            @click="goToRequest"
+          >
+            Request access
+          </button>
+        </p>
+
+        <div class="flex items-center gap-3 pt-1">
+          <span class="h-px flex-1 bg-border" />
+          <span class="text-xs text-muted-foreground">or</span>
+          <span class="h-px flex-1 bg-border" />
+        </div>
+        <button
+          type="button"
+          :disabled="demoing"
+          class="w-full rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+          @click="tryDemo"
+        >
+          {{ demoing ? 'Starting demo…' : 'Try the demo' }}
+        </button>
       </form>
 
       <form v-else-if="step === 'code'" class="mt-6 space-y-4" @submit.prevent="submitCode">
@@ -135,7 +205,7 @@ function extractMessage(e: unknown): string | null {
         </button>
       </form>
 
-      <form v-else class="mt-6 space-y-4" @submit.prevent="submitName">
+      <form v-else-if="step === 'name'" class="mt-6 space-y-4" @submit.prevent="submitName">
         <label class="block">
           <span class="text-sm font-medium">Display name</span>
           <input
@@ -162,6 +232,52 @@ function extractMessage(e: unknown): string | null {
           Use a different email
         </button>
       </form>
+
+      <form v-else-if="step === 'request'" class="mt-6 space-y-4" @submit.prevent="submitRequest">
+        <label class="block">
+          <span class="text-sm font-medium">Email</span>
+          <input
+            v-model="email"
+            type="email"
+            required
+            autocomplete="email"
+            placeholder="you@example.com"
+            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:border-primary"
+          />
+        </label>
+        <button
+          type="submit"
+          :disabled="submitting"
+          class="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          {{ submitting ? 'Sending…' : 'Request access' }}
+        </button>
+        <button
+          type="button"
+          class="w-full text-sm text-muted-foreground hover:text-foreground"
+          @click="reset"
+        >
+          Back
+        </button>
+      </form>
+
+      <div v-else-if="step === 'requested'" class="mt-6 space-y-4">
+        <button
+          type="button"
+          :disabled="demoing"
+          class="w-full rounded-md bg-primary px-4 py-2 text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          @click="tryDemo"
+        >
+          {{ demoing ? 'Starting demo…' : 'Try the demo' }}
+        </button>
+        <button
+          type="button"
+          class="w-full text-sm text-muted-foreground hover:text-foreground"
+          @click="reset"
+        >
+          Back to sign in
+        </button>
+      </div>
 
       <p
         v-if="error"

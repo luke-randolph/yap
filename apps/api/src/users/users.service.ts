@@ -50,10 +50,19 @@ export class UsersService {
   }
 
   async search(currentUserId: string, q: string): Promise<UserPublicDTO[]> {
+    const me = await this.prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { kind: true },
+    });
+    // Sandbox isolation: guests only ever see demo characters; real members
+    // never see demo or guest accounts.
+    const audienceKind = me?.kind === 'guest' ? 'demo' : 'member';
+
     return this.prisma.user.findMany({
       where: {
         deletedAt: null,
         id: { not: currentUserId },
+        kind: audienceKind,
         OR: [
           { displayName: { contains: q, mode: 'insensitive' } },
           { email: { contains: q, mode: 'insensitive' } },

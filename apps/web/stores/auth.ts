@@ -45,6 +45,18 @@ export const useAuthStore = defineStore('auth', () => {
     await authFetch('/auth/otp/request', { method: 'POST', body: { email } });
   }
 
+  async function demoLogin(): Promise<void> {
+    const res = await authFetch<AuthTokenResponse>('/auth/demo', { method: 'POST' });
+    setSession(res);
+  }
+
+  async function requestAccess(email: string, displayName?: string): Promise<void> {
+    await authFetch('/auth/access-request', {
+      method: 'POST',
+      body: { email, ...(displayName ? { displayName } : {}) },
+    });
+  }
+
   async function verifyOtp(input: VerifyOtpInput): Promise<'ok' | 'needs_display_name'> {
     try {
       const res = await authFetch<AuthTokenResponse>('/auth/otp/verify', {
@@ -106,6 +118,16 @@ export const useAuthStore = defineStore('auth', () => {
     clearSession();
   }
 
+  async function exitDemo(): Promise<void> {
+    const api = useApi();
+    try {
+      await api('/auth/demo/exit', { method: 'POST' });
+    } catch {
+      // best-effort: still clear local state if the cleanup call fails
+    }
+    clearSession();
+  }
+
   return {
     accessToken,
     user,
@@ -114,11 +136,14 @@ export const useAuthStore = defineStore('auth', () => {
     setSession,
     clearSession,
     requestOtp,
+    demoLogin,
+    requestAccess,
     verifyOtp,
     updateProfile,
     uploadAvatar,
     removeAvatar,
     refresh,
     logout,
+    exitDemo,
   };
 });

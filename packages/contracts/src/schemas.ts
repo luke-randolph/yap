@@ -27,11 +27,30 @@ export const verifyOtpSchema = z.object({
 });
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 
+export const requestAccessSchema = z.object({
+  email: emailSchema,
+  displayName: displayNameSchema.optional(),
+});
+export type RequestAccessInput = z.infer<typeof requestAccessSchema>;
+
+export const createAllowedEmailSchema = z.object({
+  email: emailSchema,
+  note: z.string().trim().max(200).optional(),
+});
+export type CreateAllowedEmailInput = z.infer<typeof createAllowedEmailSchema>;
+
+export const accessRequestListQuerySchema = z.object({
+  status: z.enum(['pending', 'approved', 'denied', 'all']).default('pending'),
+});
+export type AccessRequestListQueryInput = z.infer<typeof accessRequestListQuerySchema>;
+
 export const AUTH_ERROR_CODES = {
   displayNameRequired: 'DISPLAY_NAME_REQUIRED',
   otpInvalid: 'OTP_INVALID',
   otpTooManyAttempts: 'OTP_TOO_MANY_ATTEMPTS',
   validationError: 'VALIDATION_ERROR',
+  emailNotAllowlisted: 'EMAIL_NOT_ALLOWLISTED',
+  accessRequestPending: 'ACCESS_REQUEST_PENDING',
 } as const;
 
 export const CONVERSATION_ERROR_CODES = {
@@ -43,6 +62,7 @@ export const CONVERSATION_ERROR_CODES = {
   notBlocked: 'NOT_BLOCKED',
   parentMessageNotFound: 'PARENT_MESSAGE_NOT_FOUND',
   messageNotFound: 'MESSAGE_NOT_FOUND',
+  recipientsNotAllowed: 'RECIPIENTS_NOT_ALLOWED',
 } as const;
 
 export const createConversationSchema = z
