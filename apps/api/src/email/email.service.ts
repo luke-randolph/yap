@@ -17,6 +17,13 @@ export interface SendAccessRequestedInput {
   displayName?: string | null;
 }
 
+export interface SendAddedToGroupInput {
+  to: string;
+  displayName?: string | null;
+  groupName?: string | null;
+  addedByName?: string | null;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -58,6 +65,17 @@ export class EmailService {
       this.adminEmail,
       `New Yap access request: ${requesterEmail}`,
       `${who} requested access to Yap.\n\nApprove or deny it from the admin panel:\n${this.webOrigin}`,
+    );
+  }
+
+  async sendAddedToGroup({ to, displayName, groupName, addedByName }: SendAddedToGroupInput): Promise<void> {
+    const hi = displayName ? `Hi ${displayName},` : 'Hi,';
+    const actor = addedByName ?? 'Someone';
+    const groupLabel = groupName ? `“${groupName}”` : 'a group';
+    await this.send(
+      to,
+      `You were added to ${groupName ?? 'a group'} on Yap`,
+      `${hi}\n\n${actor} added you to ${groupLabel} on Yap. Open it here:\n${this.webOrigin}`,
     );
   }
 
