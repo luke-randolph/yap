@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -15,6 +16,7 @@ import {
   type ParticipantDTO,
   type UpdateConversationInput,
 } from '@yap/contracts';
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   REALTIME_EVENTS,
@@ -44,9 +46,12 @@ type ConversationWithParticipants = Prisma.ConversationGetPayload<{
 
 @Injectable()
 export class ConversationsService {
+  private readonly logger = new Logger(ConversationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
+    private readonly email: EmailService,
   ) {}
 
   async create(currentUserId: string, input: CreateConversationInput): Promise<ConversationDTO> {
@@ -179,7 +184,7 @@ export class ConversationsService {
 
     const me = await this.prisma.user.findUniqueOrThrow({
       where: { id: currentUserId },
-      select: { kind: true },
+      select: { kind: true, displayName: true },
     });
     assertRecipientsAllowed(me.kind, users);
 
@@ -221,6 +226,19 @@ export class ConversationsService {
     // conversation when the join notice arrives.
     for (const u of toAdd) {
       await this.postSystemMessage(conversationId, u.id, `${u.displayName} joined the group`);
+
+      if (u.kind === 'member') {
+        void this.email
+          .sendAddedToGroup({
+            to: u.email,
+            displayName: u.displayName,
+            groupName: row.name,
+            addedByName: me.displayName,
+          })
+          .catch((err: Error) =>
+            this.logger.error(`Failed to send add-to-group email to ${u.email}: ${err.message}`),
+          );
+      }
     }
     return actorDto;
   }
