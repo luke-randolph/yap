@@ -209,7 +209,12 @@ export class ConversationsService {
           this.prisma.conversationParticipant.upsert({
             where: { conversationId_userId: { conversationId, userId: u.id } },
             create: { conversationId, userId: u.id },
-            update: { leftAt: null, blockedAt: null, joinedAt: new Date(), lastReadMessageId: null },
+            update: {
+              leftAt: null,
+              blockedAt: null,
+              joinedAt: new Date(),
+              lastReadMessageId: null,
+            },
           }),
         ),
       );
@@ -526,7 +531,10 @@ function computeDisplayName(
 // Sandbox isolation: a guest may only converse with demo characters, and a real
 // member only with other members. Defends the create/add paths against
 // hand-crafted requests that bypass the filtered user search.
-function assertRecipientsAllowed(actorKind: UserKind, recipients: { email: string; kind: UserKind }[]) {
+function assertRecipientsAllowed(
+  actorKind: UserKind,
+  recipients: { email: string; kind: UserKind }[],
+) {
   const requiredKind: UserKind = actorKind === 'guest' ? 'demo' : 'member';
   const disallowed = recipients.filter((r) => r.kind !== requiredKind);
   if (disallowed.length) {

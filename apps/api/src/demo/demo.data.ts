@@ -27,10 +27,13 @@ export const DEMO_GROUP = {
     { from: 'ava@demo.yap', body: 'Hey hey 👋 welcome to Yap!' },
     {
       from: 'sam@demo.yap',
-      body: "This is a demo space — go ahead and send anything. It all works for real: replies, reactions, image uploads.",
+      body: 'This is a demo space — go ahead and send anything. It all works for real: replies, reactions, image uploads.',
     },
     { from: 'maya@demo.yap', body: 'Try long-pressing a message to react 🎉' },
-    { from: 'ava@demo.yap', body: "Heads up though — we're just sample bots, so we won't reply back 🙂" },
+    {
+      from: 'ava@demo.yap',
+      body: "Heads up though — we're just sample bots, so we won't reply back 🙂",
+    },
     { from: 'sam@demo.yap', body: 'When you’re ready, sign up to chat with real people.' },
   ] as DemoMessage[],
 } as const;

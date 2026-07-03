@@ -45,7 +45,11 @@ export class EmailService {
   }
 
   async sendOtp({ to, code }: SendOtpEmailInput): Promise<void> {
-    await this.send(to, `Your Yap login code: ${code}`, `Your one-time code is: ${code}\n\nIt expires in 10 minutes.`);
+    await this.send(
+      to,
+      `Your Yap login code: ${code}`,
+      `Your one-time code is: ${code}\n\nIt expires in 10 minutes.`,
+    );
   }
 
   // Tells an approved person they can now sign in.
@@ -59,7 +63,10 @@ export class EmailService {
   }
 
   // Notifies the admin that someone requested access.
-  async sendAccessRequested({ requesterEmail, displayName }: SendAccessRequestedInput): Promise<void> {
+  async sendAccessRequested({
+    requesterEmail,
+    displayName,
+  }: SendAccessRequestedInput): Promise<void> {
     const who = displayName ? `${displayName} (${requesterEmail})` : requesterEmail;
     await this.send(
       this.adminEmail,
@@ -68,7 +75,12 @@ export class EmailService {
     );
   }
 
-  async sendAddedToGroup({ to, displayName, groupName, addedByName }: SendAddedToGroupInput): Promise<void> {
+  async sendAddedToGroup({
+    to,
+    displayName,
+    groupName,
+    addedByName,
+  }: SendAddedToGroupInput): Promise<void> {
     const hi = displayName ? `Hi ${displayName},` : 'Hi,';
     const actor = addedByName ?? 'Someone';
     const groupLabel = groupName ? `“${groupName}”` : 'a group';

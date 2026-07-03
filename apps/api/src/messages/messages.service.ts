@@ -121,7 +121,11 @@ export class MessagesService {
     return this.persistMessage(
       senderId,
       conversationId,
-      { body: input.body || null, parentMessageId: input.parentMessageId, clientMessageId: input.clientMessageId },
+      {
+        body: input.body || null,
+        parentMessageId: input.parentMessageId,
+        clientMessageId: input.clientMessageId,
+      },
       [attachment],
     );
   }
