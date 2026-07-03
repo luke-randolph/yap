@@ -339,7 +339,7 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   function handleDeleted(payload: { conversationId: string; messageId: string }): void {
-    dropMessage(payload.conversationId, payload.messageId);
+    markDeleted(payload.conversationId, payload.messageId);
   }
 
   // Pin or unpin a message optimistically; roll back on failure.
@@ -377,7 +377,17 @@ export const useMessagesStore = defineStore('messages', () => {
     if (messageId.startsWith('temp-')) return;
     const api = useApi();
     await api(`/conversations/${conversationId}/messages/${messageId}`, { method: 'DELETE' });
-    dropMessage(conversationId, messageId);
+    markDeleted(conversationId, messageId);
+  }
+
+  function markDeleted(conversationId: string, messageId: string): void {
+    const m = messageById(conversationId, messageId);
+    if (!m) return;
+    m.deletedAt = new Date().toISOString();
+    m.body = null;
+    m.attachments = [];
+    m.reactions = [];
+    m.pinnedAt = null;
   }
 
   function dropMessage(conversationId: string, messageId: string): void {

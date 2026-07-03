@@ -41,9 +41,18 @@ function isFromCurrentUser(senderId: string): boolean {
   return senderId === auth.user?.id;
 }
 
+function isNotice(m?: ChatMessage): boolean {
+  return !!m && (m.type === 'system' || !!m.deletedAt);
+}
+
+function unsentLabel(m: ChatMessage): string {
+  const who = isFromCurrentUser(m.senderId) ? 'You' : senderName(m.senderId);
+  return `${who} unsent a message`;
+}
+
 function isFirstInMessageRun(index: number): boolean {
   const prev = items.value[index - 1];
-  return index === 0 || prev?.senderId !== items.value[index]?.senderId || prev?.type === 'system';
+  return index === 0 || prev?.senderId !== items.value[index]?.senderId || isNotice(prev);
 }
 
 function isLastInMessageRun(index: number): boolean {
@@ -51,7 +60,7 @@ function isLastInMessageRun(index: number): boolean {
   return (
     index === items.value.length - 1 ||
     next?.senderId !== items.value[index]?.senderId ||
-    next?.type === 'system'
+    isNotice(next)
   );
 }
 
@@ -205,152 +214,163 @@ watch(
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
     <div class="relative flex min-h-0 flex-1 flex-col">
-    <div
-      ref="scroller"
-      class="min-h-0 flex-1 overflow-y-auto bg-background px-6 py-4"
-      @scroll.passive="onScroll"
-    >
-      <p
-        v-if="loading && items.length === 0"
-        class="py-6 text-center text-sm text-muted-foreground"
+      <div
+        ref="scroller"
+        class="min-h-0 flex-1 overflow-y-auto bg-background px-6 py-4"
+        @scroll.passive="onScroll"
       >
-        Loading messages…
-      </p>
-      <p v-else-if="items.length === 0" class="py-6 text-center text-sm text-muted-foreground">
-        No messages yet. Say hello 👋
-      </p>
-
-      <p v-if="loadingOlder" class="py-2 text-center text-sm text-muted-foreground">Loading…</p>
-
-      <ul v-if="items.length > 0" class="flex flex-col gap-2">
-        <template v-for="(m, i) in items" :key="m.clientMessageId ?? m.id">
-        <li v-if="m.type === 'system'" class="my-1 flex justify-center">
-          <span class="rounded-full bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
-            {{ m.body }}
-          </span>
-        </li>
-        <li
-          v-else
-          :data-message-id="m.id"
-          class="flex gap-1"
-          :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
+        <p
+          v-if="loading && items.length === 0"
+          class="py-6 text-center text-sm text-muted-foreground"
         >
-          <template v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)">
-            <UserAvatar
-              v-if="isLastInMessageRun(i)"
-              :name="senderName(m.senderId)"
-              :src="senderAvatar(m.senderId)"
-              :size="28"
-              class="self-end ring-1 ring-border"
-            />
-            <span v-else class="w-7 shrink-0" aria-hidden="true" />
-          </template>
-          <div
-            class="flex min-w-0 flex-1 flex-col"
-            :class="isFromCurrentUser(m.senderId) ? 'items-end' : 'items-start'"
-          >
-            <div
-              class="group flex min-w-0 items-center gap-1"
+          Loading messages…
+        </p>
+        <p v-else-if="items.length === 0" class="py-6 text-center text-sm text-muted-foreground">
+          No messages yet. Say hello 👋
+        </p>
+
+        <p v-if="loadingOlder" class="py-2 text-center text-sm text-muted-foreground">Loading…</p>
+
+        <ul v-if="items.length > 0" class="flex flex-col gap-2">
+          <template v-for="(m, i) in items" :key="m.clientMessageId ?? m.id">
+            <li
+              v-if="m.deletedAt"
+              class="my-1 flex"
+              :class="isFromCurrentUser(m.senderId) ? 'justify-end' : 'justify-start'"
+            >
+              <span class="py-1 text-xs italic text-muted-foreground">
+                {{ unsentLabel(m) }}
+              </span>
+            </li>
+            <li v-else-if="m.type === 'system'" class="my-1 flex justify-center">
+              <span class="rounded-full bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
+                {{ m.body }}
+              </span>
+            </li>
+            <li
+              v-else
+              :data-message-id="m.id"
+              class="flex gap-1"
               :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
             >
-              <div
-                class="min-w-0 max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
-                :class="[
-                  isFromCurrentUser(m.senderId)
-                    ? 'rounded-br-none bg-primary text-primary-foreground'
-                    : 'rounded-bl-none bg-card text-foreground',
-                  isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
-                    ? 'border-gray-800 dark:border-gray-400 shadow-message-highlight'
-                    : messages.replyTarget?.id === m.id
-                      ? 'border-gray-400 dark:border-primary/50 shadow-message-highlight'
-                      : 'border-transparent',
-                  highlightedId === m.id ? 'shadow-message-highlight' : '',
-                ]"
-              >
-                <p
-                  v-if="
-                    conversation.isGroup && !isFromCurrentUser(m.senderId) && isFirstInMessageRun(i)
-                  "
-                  class="mb-0.5 text-xs font-medium opacity-70"
-                >
-                  {{ senderName(m.senderId) }}
-                </p>
-                <div
-                  v-if="m.parentMessageId"
-                  class="mb-1 rounded-md border-l-2 py-1 pl-2 pr-2 text-xs"
-                  :class="
-                    isFromCurrentUser(m.senderId)
-                      ? 'border-primary-foreground/60 bg-primary-foreground/15'
-                      : 'border-foreground/30 bg-foreground/10'
-                  "
-                >
-                  <span class="font-medium">{{ parentSender(m) }}</span>
-                  <span class="block truncate">{{ parentSnippet(m) }}</span>
-                </div>
-                <img
-                  v-for="att in m.attachments"
-                  :key="att.id"
-                  :src="att.url"
-                  alt="Image attachment"
-                  loading="lazy"
-                  class="max-h-80 max-w-full rounded-lg object-cover"
-                  :class="m.body ? 'mb-1' : ''"
+              <template v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)">
+                <UserAvatar
+                  v-if="isLastInMessageRun(i)"
+                  :name="senderName(m.senderId)"
+                  :src="senderAvatar(m.senderId)"
+                  :size="28"
+                  class="self-end ring-1 ring-border"
                 />
-                <p v-if="m.body" class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
-              </div>
-              <MessageActions
-                class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
-                :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
-                :pinned="!!m.pinnedAt"
-                :can-delete="isFromCurrentUser(m.senderId) && !m.id.startsWith('temp-')"
-                @reply="messages.setReplyTarget(m)"
-                @react="toggleReaction(m, $event)"
-                @pin="togglePin(m)"
-                @delete="pendingDelete = m"
-              />
-            </div>
-            <MessageReactions
-              :reactions="m.reactions"
-              :participants="conversation.participants"
-              @toggle="toggleReaction(m, $event)"
-            />
-            <span
-              class="px-1 text-xs text-muted-foreground"
-              :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"
-            >
-              <Pin
-                v-if="m.pinnedAt"
-                class="mr-0.5 inline h-3 w-3 -translate-y-px fill-current text-primary"
-              />
-              {{ formatTime(m.createdAt) }}
-              <template v-if="m.status === 'sending'"> · Sending…</template>
-              <template v-else-if="m.status === 'failed'">
-                · <span class="text-destructive">Failed to send</span>
+                <span v-else class="w-7 shrink-0" aria-hidden="true" />
               </template>
-            </span>
-            <div v-if="m.status === 'failed'" class="mt-1 flex gap-1.5">
-              <button
-                type="button"
-                class="flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                @click="retryFailed(m)"
+              <div
+                class="flex min-w-0 flex-1 flex-col"
+                :class="isFromCurrentUser(m.senderId) ? 'items-end' : 'items-start'"
               >
-                <RotateCcw class="h-3 w-3" />
-                Retry
-              </button>
-              <button
-                type="button"
-                class="flex items-center gap-1 rounded-md border border-destructive/40 px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
-                @click="discardFailed(m)"
-              >
-                <Trash2 class="h-3 w-3" />
-                Delete
-              </button>
-            </div>
-          </div>
-        </li>
-        </template>
-      </ul>
-    </div>
+                <div
+                  class="group flex min-w-0 items-center gap-1"
+                  :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
+                >
+                  <div
+                    class="min-w-0 max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
+                    :class="[
+                      isFromCurrentUser(m.senderId)
+                        ? 'rounded-br-none bg-primary text-primary-foreground'
+                        : 'rounded-bl-none bg-card text-foreground',
+                      isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
+                        ? 'border-gray-800 dark:border-gray-400 shadow-message-highlight'
+                        : messages.replyTarget?.id === m.id
+                          ? 'border-gray-400 dark:border-primary/50 shadow-message-highlight'
+                          : 'border-transparent',
+                      highlightedId === m.id ? 'shadow-message-highlight' : '',
+                    ]"
+                  >
+                    <p
+                      v-if="
+                        conversation.isGroup &&
+                        !isFromCurrentUser(m.senderId) &&
+                        isFirstInMessageRun(i)
+                      "
+                      class="mb-0.5 text-xs font-medium opacity-70"
+                    >
+                      {{ senderName(m.senderId) }}
+                    </p>
+                    <div
+                      v-if="m.parentMessageId"
+                      class="mb-1 rounded-md border-l-2 py-1 pl-2 pr-2 text-xs"
+                      :class="
+                        isFromCurrentUser(m.senderId)
+                          ? 'border-primary-foreground/60 bg-primary-foreground/15'
+                          : 'border-foreground/30 bg-foreground/10'
+                      "
+                    >
+                      <span class="font-medium">{{ parentSender(m) }}</span>
+                      <span class="block truncate">{{ parentSnippet(m) }}</span>
+                    </div>
+                    <img
+                      v-for="att in m.attachments"
+                      :key="att.id"
+                      :src="att.url"
+                      alt="Image attachment"
+                      loading="lazy"
+                      class="max-h-80 max-w-full rounded-lg object-cover"
+                      :class="m.body ? 'mb-1' : ''"
+                    />
+                    <p v-if="m.body" class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
+                  </div>
+                  <MessageActions
+                    class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                    :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
+                    :pinned="!!m.pinnedAt"
+                    :can-delete="isFromCurrentUser(m.senderId) && !m.id.startsWith('temp-')"
+                    @reply="messages.setReplyTarget(m)"
+                    @react="toggleReaction(m, $event)"
+                    @pin="togglePin(m)"
+                    @delete="pendingDelete = m"
+                  />
+                </div>
+                <MessageReactions
+                  :reactions="m.reactions"
+                  :participants="conversation.participants"
+                  @toggle="toggleReaction(m, $event)"
+                />
+                <span
+                  class="px-1 text-xs text-muted-foreground"
+                  :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"
+                >
+                  <Pin
+                    v-if="m.pinnedAt"
+                    class="mr-0.5 inline h-3 w-3 -translate-y-px fill-current text-primary"
+                  />
+                  {{ formatTime(m.createdAt) }}
+                  <template v-if="m.status === 'sending'"> · Sending…</template>
+                  <template v-else-if="m.status === 'failed'">
+                    · <span class="text-destructive">Failed to send</span>
+                  </template>
+                </span>
+                <div v-if="m.status === 'failed'" class="mt-1 flex gap-1.5">
+                  <button
+                    type="button"
+                    class="flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                    @click="retryFailed(m)"
+                  >
+                    <RotateCcw class="h-3 w-3" />
+                    Retry
+                  </button>
+                  <button
+                    type="button"
+                    class="flex items-center gap-1 rounded-md border border-destructive/40 px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                    @click="discardFailed(m)"
+                  >
+                    <Trash2 class="h-3 w-3" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </li>
+          </template>
+        </ul>
+      </div>
 
       <button
         v-if="hasNewMessages"
