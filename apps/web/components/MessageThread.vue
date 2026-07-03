@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, Pin } from 'lucide-vue-next';
+import { ChevronDown, Pin, RotateCcw, Trash2 } from 'lucide-vue-next';
 import type { ConversationDTO } from '@yap/contracts';
 import type { ChatMessage } from '~/stores/messages';
 
@@ -85,6 +85,14 @@ function toggleReaction(m: ChatMessage, emoji: string): void {
   } else {
     void messages.react(props.conversation.id, m.id, emoji);
   }
+}
+
+function retryFailed(m: ChatMessage): void {
+  if (m.clientMessageId) void messages.retrySend(props.conversation.id, m.clientMessageId);
+}
+
+function discardFailed(m: ChatMessage): void {
+  if (m.clientMessageId) messages.discardFailed(props.conversation.id, m.clientMessageId);
 }
 
 function togglePin(m: ChatMessage): void {
@@ -173,6 +181,16 @@ watch(
     } else {
       hasNewMessages.value = true;
     }
+  },
+);
+
+watch(
+  () => {
+    const last = items.value[items.value.length - 1];
+    return last?.status === 'failed' ? (last.clientMessageId ?? last.id) : null;
+  },
+  (key) => {
+    if (key && isAtBottom.value) scrollToBottom(true);
   },
 );
 
@@ -310,6 +328,24 @@ watch(
                 · <span class="text-destructive">Failed to send</span>
               </template>
             </span>
+            <div v-if="m.status === 'failed'" class="mt-1 flex gap-1.5">
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                @click="retryFailed(m)"
+              >
+                <RotateCcw class="h-3 w-3" />
+                Retry
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded-md border border-destructive/40 px-2 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10"
+                @click="discardFailed(m)"
+              >
+                <Trash2 class="h-3 w-3" />
+                Delete
+              </button>
+            </div>
           </div>
         </li>
         </template>
