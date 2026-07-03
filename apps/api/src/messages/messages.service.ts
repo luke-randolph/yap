@@ -17,6 +17,7 @@ import { STORAGE, type StorageAdapter } from '../storage/storage.interface';
 import {
   REALTIME_EVENTS,
   type MessageCreatedEvent,
+  type MessageDeletedEvent,
   type MessageUpdatedEvent,
 } from '../realtime/realtime.events';
 
@@ -220,6 +221,74 @@ export class MessagesService {
     return this.emitMessageUpdate(conversationId, messageId);
   }
 
+  async listPinned(userId: string, conversationId: string): Promise<MessageDTO[]> {
+    await this.conversations.assertParticipant(userId, conversationId);
+    const rows = await this.prisma.message.findMany({
+      where: { conversationId, deletedAt: null, pinnedAt: { not: null } },
+      include: messageInclude,
+      orderBy: { pinnedAt: 'desc' },
+    });
+    return rows.map(toMessageDto);
+  }
+
+  async setPinned(
+    userId: string,
+    conversationId: string,
+    messageId: string,
+    pinned: boolean,
+  ): Promise<MessageDTO> {
+    await this.conversations.assertParticipant(userId, conversationId);
+    await this.assertMessageInConversation(messageId, conversationId);
+
+    await this.prisma.message.update({
+      where: { id: messageId },
+      data: { pinnedAt: pinned ? new Date() : null },
+    });
+
+    return this.emitMessageUpdate(conversationId, messageId);
+  }
+
+  async remove(userId: string, conversationId: string, messageId: string): Promise<void> {
+    await this.conversations.assertParticipant(userId, conversationId);
+    const message = await this.prisma.message.findFirst({
+      where: { id: messageId, conversationId, deletedAt: null },
+      select: { id: true, senderId: true, type: true },
+    });
+    if (!message || message.type !== 'user') {
+      throw new BadRequestException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.messageNotFound,
+          message: 'Message not found in this conversation',
+        },
+      });
+    }
+    if (message.senderId !== userId) {
+      throw new ForbiddenException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notMessageOwner,
+          message: 'You can only unsend your own messages',
+        },
+      });
+    }
+
+    await this.prisma.message.update({
+      where: { id: messageId },
+      data: { deletedAt: new Date(), pinnedAt: null },
+    });
+
+    await this.emitMessageDeleted(conversationId, messageId);
+
+    const sender = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { displayName: true },
+    });
+    await this.conversations.postSystemMessage(
+      conversationId,
+      userId,
+      `${sender.displayName} unsent a message`,
+    );
+  }
+
   private async assertMessageInConversation(
     messageId: string,
     conversationId: string,
@@ -259,6 +328,19 @@ export class MessagesService {
     return dto;
   }
 
+  private async emitMessageDeleted(conversationId: string, messageId: string): Promise<void> {
+    const participants = await this.prisma.conversationParticipant.findMany({
+      where: { conversationId, leftAt: null },
+      select: { userId: true },
+    });
+    const event: MessageDeletedEvent = {
+      conversationId,
+      messageId,
+      participantUserIds: participants.map((p) => p.userId),
+    };
+    this.events.emit(REALTIME_EVENTS.messageDeleted, event);
+  }
+
   private async resolveCursor(
     conversationId: string,
     cursorId: string | undefined,
@@ -296,5 +378,6 @@ function toMessageDto(row: MessageWithRelations): MessageDTO {
     createdAt: row.createdAt.toISOString(),
     editedAt: row.editedAt?.toISOString() ?? null,
     deletedAt: row.deletedAt?.toISOString() ?? null,
+    pinnedAt: row.pinnedAt?.toISOString() ?? null,
   };
 }

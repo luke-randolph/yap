@@ -27,6 +27,10 @@ export function useRealtimeSync(): void {
     messages.handleUpdated(payload);
   }
 
+  function onMessageDeleted(payload: { conversationId: string; messageId: string }) {
+    messages.handleDeleted(payload);
+  }
+
   function onMessageCreated(payload: {
     conversationId: string;
     message: MessageDTO;
@@ -53,6 +57,7 @@ export function useRealtimeSync(): void {
     sock.on('conversation.removed', onConversationRemoved);
     sock.on('message.created', onMessageCreated);
     sock.on('message.updated', onMessageUpdated);
+    sock.on('message.deleted', onMessageDeleted);
   });
 
   onBeforeUnmount(() => {
@@ -62,5 +67,6 @@ export function useRealtimeSync(): void {
     sock?.off('conversation.removed', onConversationRemoved);
     sock?.off('message.created', onMessageCreated);
     sock?.off('message.updated', onMessageUpdated);
+    sock?.off('message.deleted', onMessageDeleted);
   });
 }

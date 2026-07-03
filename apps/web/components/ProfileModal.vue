@@ -24,17 +24,17 @@ async function loadBlocked() {
   }
 }
 
-async function unblock(conv: ConversationDTO) {
-  if (unblocking.value.has(conv.id)) return;
-  unblocking.value.add(conv.id);
+async function unblock(conversation: ConversationDTO) {
+  if (unblocking.value.has(conversation.id)) return;
+  unblocking.value.add(conversation.id);
   try {
-    await conversations.unblock(conv.id);
-    blocked.value = blocked.value.filter((c) => c.id !== conv.id);
-    toasts.success(`Unblocked ${conv.displayName}`);
+    await conversations.unblock(conversation.id);
+    blocked.value = blocked.value.filter((c) => c.id !== conversation.id);
+    toasts.success(`Unblocked ${conversation.displayName}`);
   } catch (e) {
     toasts.error(getApiError(e)?.message ?? 'Could not unblock');
   } finally {
-    unblocking.value.delete(conv.id);
+    unblocking.value.delete(conversation.id);
   }
 }
 
@@ -243,16 +243,16 @@ onBeforeUnmount(clearPreview);
         </button>
         <ul v-if="blockedOpen" class="mt-2 space-y-1">
           <li
-            v-for="conv in blocked"
-            :key="conv.id"
+            v-for="conversation in blocked"
+            :key="conversation.id"
             class="flex items-center gap-2 rounded-md border border-border px-2 py-1.5"
           >
-            <span class="min-w-0 flex-1 truncate text-sm">{{ conv.displayName }}</span>
+            <span class="min-w-0 flex-1 truncate text-sm">{{ conversation.displayName }}</span>
             <button
               type="button"
-              :disabled="unblocking.has(conv.id)"
+              :disabled="unblocking.has(conversation.id)"
               class="shrink-0 rounded-md px-2 py-1 text-xs text-primary hover:bg-muted disabled:opacity-50"
-              @click="unblock(conv)"
+              @click="unblock(conversation)"
             >
               Unblock
             </button>

@@ -27,6 +27,7 @@ import {
   type ConversationRemovedEvent,
   type ConversationUpdatedEvent,
   type MessageCreatedEvent,
+  type MessageDeletedEvent,
   type MessageUpdatedEvent,
 } from './realtime.events';
 
@@ -148,6 +149,16 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     this.server.to(rooms).emit('message.updated', {
       conversationId: event.message.conversationId,
       message: event.message,
+    });
+  }
+
+  @OnEvent(REALTIME_EVENTS.messageDeleted)
+  onMessageDeleted(event: MessageDeletedEvent): void {
+    const rooms = event.participantUserIds.map(userRoom);
+    if (rooms.length === 0) return;
+    this.server.to(rooms).emit('message.deleted', {
+      conversationId: event.conversationId,
+      messageId: event.messageId,
     });
   }
 

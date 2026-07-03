@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Pin } from 'lucide-vue-next';
 import type { ConversationDTO } from '@yap/contracts';
 import type { ChatMessage } from '~/stores/messages';
 
@@ -8,6 +9,11 @@ const props = defineProps<{
 
 const auth = useAuthStore();
 const messages = useMessagesStore();
+const toasts = useToastsStore();
+
+const pendingDelete = ref<ChatMessage | null>(null);
+const deleting = ref(false);
+const highlightedId = ref<string | null>(null);
 
 const scroller = ref<HTMLElement | null>(null);
 
@@ -78,10 +84,45 @@ function toggleReaction(m: ChatMessage, emoji: string): void {
   }
 }
 
+function togglePin(m: ChatMessage): void {
+  if (m.id.startsWith('temp-')) return;
+  void messages.setPinned(props.conversation.id, m.id, !m.pinnedAt);
+}
+
+async function confirmDelete(): Promise<void> {
+  const m = pendingDelete.value;
+  if (!m) return;
+  deleting.value = true;
+  try {
+    await messages.deleteMessage(props.conversation.id, m.id);
+    pendingDelete.value = null;
+  } catch {
+    toasts.error("Couldn't unsend message");
+  } finally {
+    deleting.value = false;
+  }
+}
+
 async function scrollToBottom() {
   await nextTick();
   const el = scroller.value;
   if (el) el.scrollTop = el.scrollHeight;
+}
+
+let highlightTimer: ReturnType<typeof setTimeout> | null = null;
+
+async function jumpTo(messageId: string) {
+  await nextTick();
+  const el = scroller.value?.querySelector(`[data-message-id="${messageId}"]`);
+  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (el) {
+    highlightedId.value = messageId;
+    if (highlightTimer) clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => {
+      if (highlightedId.value === messageId) highlightedId.value = null;
+    }, 2000);
+  }
+  messages.clearScrollTarget();
 }
 
 watch(
@@ -95,6 +136,13 @@ watch(
 );
 
 watch(() => items.value.length, scrollToBottom);
+
+watch(
+  () => messages.scrollTarget,
+  (id) => {
+    if (id) void jumpTo(id);
+  },
+);
 </script>
 
 <template>
@@ -119,6 +167,7 @@ watch(() => items.value.length, scrollToBottom);
         </li>
         <li
           v-else
+          :data-message-id="m.id"
           class="flex gap-1"
           :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
         >
@@ -147,10 +196,11 @@ watch(() => items.value.length, scrollToBottom);
                     ? 'rounded-br-none bg-primary text-primary-foreground'
                     : 'rounded-bl-none bg-card text-foreground',
                   isFromCurrentUser(m.senderId) && messages.replyTarget?.id === m.id
-                    ? 'border-gray-800 dark:border-gray-400 shadow-[0_0_20px] shadow-gray-400'
+                    ? 'border-gray-800 dark:border-gray-400 shadow-message-highlight'
                     : messages.replyTarget?.id === m.id
-                      ? 'border-gray-400 dark:border-primary/50 shadow-[0_0_20px] shadow-primary/30'
+                      ? 'border-gray-400 dark:border-primary/50 shadow-message-highlight'
                       : 'border-transparent',
+                  highlightedId === m.id ? 'shadow-message-highlight' : '',
                 ]"
               >
                 <p
@@ -187,8 +237,12 @@ watch(() => items.value.length, scrollToBottom);
               <MessageActions
                 class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
                 :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
+                :pinned="!!m.pinnedAt"
+                :can-delete="isFromCurrentUser(m.senderId) && !m.id.startsWith('temp-')"
                 @reply="messages.setReplyTarget(m)"
                 @react="toggleReaction(m, $event)"
+                @pin="togglePin(m)"
+                @delete="pendingDelete = m"
               />
             </div>
             <MessageReactions
@@ -200,6 +254,10 @@ watch(() => items.value.length, scrollToBottom);
               class="px-1 text-xs text-muted-foreground"
               :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"
             >
+              <Pin
+                v-if="m.pinnedAt"
+                class="mr-0.5 inline h-3 w-3 -translate-y-px fill-current text-primary"
+              />
               {{ formatTime(m.createdAt) }}
               <template v-if="m.status === 'sending'"> · Sending…</template>
               <template v-else-if="m.status === 'failed'">
@@ -213,5 +271,16 @@ watch(() => items.value.length, scrollToBottom);
     </div>
 
     <MessageComposer :conversation-id="conversation.id" />
+
+    <ConfirmModal
+      v-if="pendingDelete"
+      title="Unsend message?"
+      message="This removes the message for everyone. They'll see that a message was unsent."
+      confirm-label="Unsend"
+      danger
+      :loading="deleting"
+      @confirm="confirmDelete"
+      @cancel="pendingDelete = null"
+    />
   </div>
 </template>

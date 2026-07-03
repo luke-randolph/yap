@@ -62,6 +62,7 @@ export const CONVERSATION_ERROR_CODES = {
   notBlocked: 'NOT_BLOCKED',
   parentMessageNotFound: 'PARENT_MESSAGE_NOT_FOUND',
   messageNotFound: 'MESSAGE_NOT_FOUND',
+  notMessageOwner: 'NOT_MESSAGE_OWNER',
   recipientsNotAllowed: 'RECIPIENTS_NOT_ALLOWED',
 } as const;
 

@@ -344,7 +344,7 @@ export class ConversationsService {
     this.events.emit(REALTIME_EVENTS.conversationRemoved, removed);
   }
 
-  private async postSystemMessage(
+  async postSystemMessage(
     conversationId: string,
     subjectUserId: string,
     text: string,
@@ -376,6 +376,7 @@ export class ConversationsService {
       createdAt: message.createdAt.toISOString(),
       editedAt: message.editedAt?.toISOString() ?? null,
       deletedAt: message.deletedAt?.toISOString() ?? null,
+      pinnedAt: message.pinnedAt?.toISOString() ?? null,
     };
     const event: MessageCreatedEvent = {
       message: dto,

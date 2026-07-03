@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Menu, Pencil, Users, X } from 'lucide-vue-next';
+import { Check, Menu, Pencil, Pin, Users, X } from 'lucide-vue-next';
 import { getApiError, type ConversationDTO } from '@yap/contracts';
 
 const props = defineProps<{
@@ -18,6 +18,7 @@ const shownDiscs = computed(() => discPeople.value.slice(0, MAX_DISCS));
 const extraDiscs = computed(() => Math.max(0, discPeople.value.length - MAX_DISCS));
 
 const showParticipants = ref(false);
+const showPinned = ref(false);
 const editingName = ref(false);
 const nameDraft = ref('');
 const savingName = ref(false);
@@ -131,6 +132,14 @@ async function saveName() {
         >
           <Users class="h-3.5 w-3.5" />
         </button>
+        <button
+          type="button"
+          class="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Pinned messages"
+          @click="showPinned = true"
+        >
+          <Pin class="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
     <p v-if="nameError" class="mt-1 text-xs text-destructive-foreground">{{ nameError }}</p>
@@ -147,6 +156,11 @@ async function saveName() {
       v-if="showParticipants"
       :conversation="conversation"
       @close="showParticipants = false"
+    />
+    <PinnedMessagesModal
+      v-if="showPinned"
+      :conversation="conversation"
+      @close="showPinned = false"
     />
   </header>
 </template>

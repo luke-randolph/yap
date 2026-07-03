@@ -41,13 +41,13 @@ async function load() {
 watch(tab, load);
 onMounted(load);
 
-async function act(row: AccessRequestDTO, run: () => Promise<unknown>, okMsg: string) {
+async function act(row: AccessRequestDTO, run: () => Promise<unknown>, successMessage: string) {
   if (busy.value.has(row.id)) return;
   busy.value.add(row.id);
   try {
     await run();
     rows.value = rows.value.filter((r) => r.id !== row.id);
-    toasts.success(okMsg);
+    toasts.success(successMessage);
   } catch (e) {
     toasts.error(getApiError(e)?.message ?? 'Action failed');
   } finally {
@@ -56,11 +56,23 @@ async function act(row: AccessRequestDTO, run: () => Promise<unknown>, okMsg: st
 }
 
 const approve = (row: AccessRequestDTO) =>
-  act(row, () => api(`/admin/access-requests/${row.id}/approve`, { method: 'POST' }), `Approved ${row.email}`);
+  act(
+    row,
+    () => api(`/admin/access-requests/${row.id}/approve`, { method: 'POST' }),
+    `Approved ${row.email}`,
+  );
 const deny = (row: AccessRequestDTO) =>
-  act(row, () => api(`/admin/access-requests/${row.id}/deny`, { method: 'POST' }), `Denied ${row.email}`);
+  act(
+    row,
+    () => api(`/admin/access-requests/${row.id}/deny`, { method: 'POST' }),
+    `Denied ${row.email}`,
+  );
 const remove = (row: AccessRequestDTO) =>
-  act(row, () => api(`/admin/access-requests/${row.id}`, { method: 'DELETE' }), `Removed ${row.email}`);
+  act(
+    row,
+    () => api(`/admin/access-requests/${row.id}`, { method: 'DELETE' }),
+    `Removed ${row.email}`,
+  );
 
 async function addEmail() {
   const email = newEmail.value.trim();
@@ -92,7 +104,9 @@ function formatDate(iso: string): string {
     class="fixed inset-0 z-50 flex items-center justify-center bg-overlay/55 backdrop-blur-sm"
     @click.self="emit('close')"
   >
-    <div class="flex max-h-[85vh] w-full max-w-md flex-col rounded-xl border border-border bg-card p-6 shadow-lg">
+    <div
+      class="flex max-h-[85vh] w-full max-w-md flex-col rounded-xl border border-border bg-card p-6 shadow-lg"
+    >
       <div class="flex items-start justify-between">
         <h2 class="text-lg font-semibold tracking-tight">Access requests</h2>
         <button
