@@ -12,7 +12,22 @@ export interface ChatMessage extends MessageDTO {
   status?: SendStatus;
 }
 
+// The parameters needed to (re)attempt a send, kept off the reactive store and
+// keyed by clientMessageId so a failed message can be retried. Images also hold
+// the File, which the message itself doesn't carry.
+type PendingSend =
+  | { kind: 'text'; conversationId: string; body: string; parentMessageId: string | null }
+  | {
+      kind: 'image';
+      conversationId: string;
+      file: File;
+      body: string;
+      parentMessageId: string | null;
+      previewUrl: string;
+    };
+
 export const useMessagesStore = defineStore('messages', () => {
+  const pending = new Map<string, PendingSend>();
   const byConversation = ref<Record<string, ChatMessage[]>>({});
   const loaded = ref<Record<string, boolean>>({});
   const loading = ref<Record<string, boolean>>({});
@@ -133,6 +148,14 @@ export const useMessagesStore = defineStore('messages', () => {
       status: 'sending',
     };
     upsert(conversationId, optimistic);
+    pending.set(clientMessageId, { kind: 'text', conversationId, body, parentMessageId });
+    await attemptText(clientMessageId);
+  }
+
+  async function attemptText(clientMessageId: string): Promise<void> {
+    const p = pending.get(clientMessageId);
+    if (!p || p.kind !== 'text') return;
+    const { conversationId, body, parentMessageId } = p;
 
     const socket = useSocket().ensureConnected();
     if (socket) {
@@ -146,6 +169,7 @@ export const useMessagesStore = defineStore('messages', () => {
               setStatus(conversationId, clientMessageId, 'failed');
               return;
             }
+            pending.delete(clientMessageId);
             upsert(conversationId, { ...res.message, clientMessageId, status: 'sent' });
           },
         );
@@ -159,6 +183,7 @@ export const useMessagesStore = defineStore('messages', () => {
         method: 'POST',
         body: { body, clientMessageId, parentMessageId: parentMessageId ?? undefined },
       });
+      pending.delete(clientMessageId);
       upsert(conversationId, { ...msg, clientMessageId, status: 'sent' });
     } catch {
       setStatus(conversationId, clientMessageId, 'failed');
@@ -200,6 +225,21 @@ export const useMessagesStore = defineStore('messages', () => {
       status: 'sending',
     };
     upsert(conversationId, optimistic);
+    pending.set(clientMessageId, {
+      kind: 'image',
+      conversationId,
+      file,
+      body,
+      parentMessageId,
+      previewUrl,
+    });
+    await attemptImage(clientMessageId);
+  }
+
+  async function attemptImage(clientMessageId: string): Promise<void> {
+    const p = pending.get(clientMessageId);
+    if (!p || p.kind !== 'image') return;
+    const { conversationId, file, body, parentMessageId, previewUrl } = p;
 
     try {
       const api = useApi();
@@ -212,11 +252,27 @@ export const useMessagesStore = defineStore('messages', () => {
         method: 'POST',
         body: form,
       });
+      pending.delete(clientMessageId);
       upsert(conversationId, { ...msg, clientMessageId, status: 'sent' });
       URL.revokeObjectURL(previewUrl);
     } catch {
       setStatus(conversationId, clientMessageId, 'failed');
     }
+  }
+
+  async function retrySend(conversationId: string, clientMessageId: string): Promise<void> {
+    const p = pending.get(clientMessageId);
+    if (!p) return;
+    setStatus(conversationId, clientMessageId, 'sending');
+    if (p.kind === 'text') await attemptText(clientMessageId);
+    else await attemptImage(clientMessageId);
+  }
+
+  function discardFailed(conversationId: string, clientMessageId: string): void {
+    const p = pending.get(clientMessageId);
+    if (p?.kind === 'image') URL.revokeObjectURL(p.previewUrl);
+    pending.delete(clientMessageId);
+    dropMessage(conversationId, `temp-${clientMessageId}`);
   }
 
   function handleIncoming(payload: {
@@ -332,6 +388,8 @@ export const useMessagesStore = defineStore('messages', () => {
   }
 
   function reset(): void {
+    for (const p of pending.values()) if (p.kind === 'image') URL.revokeObjectURL(p.previewUrl);
+    pending.clear();
     byConversation.value = {};
     loaded.value = {};
     loading.value = {};
@@ -389,6 +447,8 @@ export const useMessagesStore = defineStore('messages', () => {
     loadOlder,
     send,
     sendImage,
+    retrySend,
+    discardFailed,
     react,
     unreact,
     setPinned,
