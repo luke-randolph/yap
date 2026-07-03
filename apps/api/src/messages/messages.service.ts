@@ -55,7 +55,7 @@ export class MessagesService {
     const cursorId = query.after ?? query.before;
     const cursor = await this.resolveCursor(conversationId, cursorId);
 
-    const where: Prisma.MessageWhereInput = { conversationId, deletedAt: null };
+    const where: Prisma.MessageWhereInput = { conversationId };
     if (cursor) {
       where.OR =
         direction === 'before'
@@ -271,22 +271,17 @@ export class MessagesService {
       });
     }
 
-    await this.prisma.message.update({
-      where: { id: messageId },
-      data: { deletedAt: new Date(), pinnedAt: null },
-    });
+    // Row stays for the "unsent" system message; its content is discarded.
+    await this.prisma.$transaction([
+      this.prisma.messageAttachment.deleteMany({ where: { messageId } }),
+      this.prisma.messageReaction.deleteMany({ where: { messageId } }),
+      this.prisma.message.update({
+        where: { id: messageId },
+        data: { deletedAt: new Date(), body: null, pinnedAt: null },
+      }),
+    ]);
 
     await this.emitMessageDeleted(conversationId, messageId);
-
-    const sender = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { displayName: true },
-    });
-    await this.conversations.postSystemMessage(
-      conversationId,
-      userId,
-      `${sender.displayName} unsent a message`,
-    );
   }
 
   private async assertMessageInConversation(
