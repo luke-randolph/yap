@@ -60,6 +60,7 @@ export interface MessageDTO {
   createdAt: string;
   editedAt: string | null;
   deletedAt: string | null;
+  pinnedAt: string | null;
 }
 
 export interface MessageAttachmentDTO {

@@ -18,8 +18,8 @@ onMounted(async () => {
   await conversations.fetchAll();
 });
 
-function onCreated(conv: ConversationDTO) {
-  conversations.select(conv.id);
+function onCreated(conversation: ConversationDTO) {
+  conversations.select(conversation.id);
   showNewConversation.value = false;
   sidebar.close();
 }

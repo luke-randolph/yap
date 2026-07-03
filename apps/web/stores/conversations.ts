@@ -27,42 +27,42 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
-  function addOrReplace(conv: ConversationDTO) {
-    const idx = list.value.findIndex((c) => c.id === conv.id);
-    if (idx === -1) list.value = [conv, ...list.value];
-    else list.value[idx] = conv;
+  function addOrReplace(conversation: ConversationDTO) {
+    const idx = list.value.findIndex((c) => c.id === conversation.id);
+    if (idx === -1) list.value = [conversation, ...list.value];
+    else list.value[idx] = conversation;
     list.value.sort(sortConversations);
   }
 
   // Record new activity on a conversation, floating it to the top of the list.
   // No-op if the conversation isn't loaded.
   function markActivity(conversationId: string, at: string) {
-    const conv = list.value.find((c) => c.id === conversationId);
-    if (!conv) return;
-    if (!conv.lastActivityAt || Date.parse(at) > Date.parse(conv.lastActivityAt)) {
-      conv.lastActivityAt = at;
+    const conversation = list.value.find((c) => c.id === conversationId);
+    if (!conversation) return;
+    if (!conversation.lastActivityAt || Date.parse(at) > Date.parse(conversation.lastActivityAt)) {
+      conversation.lastActivityAt = at;
       list.value.sort(sortConversations);
     }
   }
 
   async function create(input: CreateConversationInput): Promise<ConversationDTO> {
     const api = useApi();
-    const conv = await api<ConversationDTO>('/conversations', {
+    const conversation = await api<ConversationDTO>('/conversations', {
       method: 'POST',
       body: input,
     });
-    addOrReplace(conv);
-    return conv;
+    addOrReplace(conversation);
+    return conversation;
   }
 
   async function update(id: string, input: UpdateConversationInput): Promise<ConversationDTO> {
     const api = useApi();
-    const conv = await api<ConversationDTO>(`/conversations/${id}`, {
+    const conversation = await api<ConversationDTO>(`/conversations/${id}`, {
       method: 'PATCH',
       body: input,
     });
-    addOrReplace(conv);
-    return conv;
+    addOrReplace(conversation);
+    return conversation;
   }
 
   function remove(id: string) {
@@ -77,12 +77,12 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   async function addParticipants(id: string, emails: string[]): Promise<ConversationDTO> {
     const api = useApi();
-    const conv = await api<ConversationDTO>(`/conversations/${id}/participants`, {
+    const conversation = await api<ConversationDTO>(`/conversations/${id}/participants`, {
       method: 'POST',
       body: { participantEmails: emails },
     });
-    addOrReplace(conv);
-    return conv;
+    addOrReplace(conversation);
+    return conversation;
   }
 
   async function leave(id: string) {
@@ -109,13 +109,13 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   function markUnread(conversationId: string) {
     if (conversationId === selectedId.value) return;
-    const conv = list.value.find((c) => c.id === conversationId);
-    if (conv) conv.hasUnreadMessages = true;
+    const conversation = list.value.find((c) => c.id === conversationId);
+    if (conversation) conversation.hasUnreadMessages = true;
   }
 
   async function markRead(conversationId: string) {
-    const conv = list.value.find((c) => c.id === conversationId);
-    if (conv) conv.hasUnreadMessages = false;
+    const conversation = list.value.find((c) => c.id === conversationId);
+    if (conversation) conversation.hasUnreadMessages = false;
     try {
       const api = useApi();
       await api(`/conversations/${conversationId}/markRead`, { method: 'POST' });
@@ -125,10 +125,10 @@ export const useConversationsStore = defineStore('conversations', () => {
   }
 
   async function toggleStar(conversationId: string) {
-    const conv = list.value.find((c) => c.id === conversationId);
-    if (!conv) return;
-    const starred = !conv.isStarred;
-    conv.isStarred = starred;
+    const conversation = list.value.find((c) => c.id === conversationId);
+    if (!conversation) return;
+    const starred = !conversation.isStarred;
+    conversation.isStarred = starred;
     list.value.sort(sortConversations);
     try {
       const api = useApi();
@@ -136,7 +136,7 @@ export const useConversationsStore = defineStore('conversations', () => {
         method: starred ? 'POST' : 'DELETE',
       });
     } catch {
-      conv.isStarred = !starred;
+      conversation.isStarred = !starred;
       list.value.sort(sortConversations);
     }
   }

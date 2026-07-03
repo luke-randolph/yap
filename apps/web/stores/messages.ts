@@ -20,6 +20,9 @@ export const useMessagesStore = defineStore('messages', () => {
   // Message the composer is replying to; cleared on conversation switch.
   const replyTarget = ref<ChatMessage | null>(null);
 
+  // Message id the thread should scroll to (e.g. tapped from the pinned modal).
+  const scrollTarget = ref<string | null>(null);
+
   function list(conversationId: string): ChatMessage[] {
     return byConversation.value[conversationId] ?? [];
   }
@@ -41,6 +44,14 @@ export const useMessagesStore = defineStore('messages', () => {
 
   function clearReplyTarget(): void {
     replyTarget.value = null;
+  }
+
+  function requestScrollTo(messageId: string): void {
+    scrollTarget.value = messageId;
+  }
+
+  function clearScrollTarget(): void {
+    scrollTarget.value = null;
   }
 
   function isLoading(conversationId: string): boolean {
@@ -88,6 +99,7 @@ export const useMessagesStore = defineStore('messages', () => {
       createdAt: new Date().toISOString(),
       editedAt: null,
       deletedAt: null,
+      pinnedAt: null,
       clientMessageId,
       status: 'sending',
     };
@@ -154,6 +166,7 @@ export const useMessagesStore = defineStore('messages', () => {
       createdAt: new Date().toISOString(),
       editedAt: null,
       deletedAt: null,
+      pinnedAt: null,
       clientMessageId,
       status: 'sending',
     };
@@ -240,11 +253,61 @@ export const useMessagesStore = defineStore('messages', () => {
     upsert(payload.conversationId, { ...payload.message, status: 'sent' });
   }
 
+  function handleDeleted(payload: { conversationId: string; messageId: string }): void {
+    dropMessage(payload.conversationId, payload.messageId);
+  }
+
+  // Pin or unpin a message optimistically; roll back on failure.
+  async function setPinned(
+    conversationId: string,
+    messageId: string,
+    pinned: boolean,
+  ): Promise<void> {
+    const msg = messageById(conversationId, messageId);
+    if (!msg || messageId.startsWith('temp-')) return;
+
+    const previous = msg.pinnedAt;
+    msg.pinnedAt = pinned ? new Date().toISOString() : null;
+
+    try {
+      const api = useApi();
+      const updated = await api<MessageDTO>(
+        `/conversations/${conversationId}/messages/${messageId}/pin`,
+        { method: pinned ? 'POST' : 'DELETE' },
+      );
+      upsert(conversationId, { ...updated, status: 'sent' });
+    } catch {
+      msg.pinnedAt = previous;
+      useToastsStore().error(pinned ? "Couldn't pin message" : "Couldn't unpin message");
+    }
+  }
+
+  async function fetchPinned(conversationId: string): Promise<void> {
+    const api = useApi();
+    const rows = await api<MessageDTO[]>(`/conversations/${conversationId}/messages/pinned`);
+    upsertMany(conversationId, rows);
+  }
+
+  async function deleteMessage(conversationId: string, messageId: string): Promise<void> {
+    if (messageId.startsWith('temp-')) return;
+    const api = useApi();
+    await api(`/conversations/${conversationId}/messages/${messageId}`, { method: 'DELETE' });
+    dropMessage(conversationId, messageId);
+  }
+
+  function dropMessage(conversationId: string, messageId: string): void {
+    const items = byConversation.value[conversationId];
+    if (!items) return;
+    const idx = items.findIndex((m) => m.id === messageId);
+    if (idx !== -1) items.splice(idx, 1);
+  }
+
   function reset(): void {
     byConversation.value = {};
     loaded.value = {};
     loading.value = {};
     replyTarget.value = null;
+    scrollTarget.value = null;
   }
 
   function bucket(conversationId: string): ChatMessage[] {
@@ -284,6 +347,9 @@ export const useMessagesStore = defineStore('messages', () => {
     replyTarget,
     setReplyTarget,
     clearReplyTarget,
+    scrollTarget,
+    requestScrollTo,
+    clearScrollTarget,
     isLoading,
     ensureLoaded,
     fetchHistory,
@@ -291,8 +357,12 @@ export const useMessagesStore = defineStore('messages', () => {
     sendImage,
     react,
     unreact,
+    setPinned,
+    fetchPinned,
+    deleteMessage,
     handleIncoming,
     handleUpdated,
+    handleDeleted,
     reset,
   };
 });

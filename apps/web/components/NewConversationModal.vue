@@ -135,11 +135,11 @@ async function submit() {
   submitting.value = true;
   try {
     const trimmedName = name.value.trim();
-    const conv = await conversations.create({
+    const conversation = await conversations.create({
       participantEmails: recipients.value.map((r) => r.email),
       ...(showNameField.value && trimmedName ? { name: trimmedName } : {}),
     });
-    emit('created', conv);
+    emit('created', conversation);
   } catch (e) {
     error.value = extractMessage(e) ?? 'Could not create chat';
   } finally {

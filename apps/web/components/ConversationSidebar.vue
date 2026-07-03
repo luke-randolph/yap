@@ -17,13 +17,13 @@ const emit = defineEmits<{
 
 const sidebar = useSidebarStore();
 
-type ConvFilter = 'all' | 'groups' | 'dms';
-const filterOptions: { value: ConvFilter; label: string }[] = [
+type ConversationFilter = 'all' | 'groups' | 'dms';
+const filterOptions: { value: ConversationFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'groups', label: 'Groups' },
   { value: 'dms', label: 'DMs' },
 ];
-const filter = ref<ConvFilter>('all');
+const filter = ref<ConversationFilter>('all');
 
 const filtered = computed(() => {
   if (filter.value === 'groups') return props.conversations.filter((c) => c.isGroup);
@@ -43,8 +43,8 @@ function onKeydown(e: KeyboardEvent) {
 onMounted(() => window.addEventListener('keydown', onKeydown));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 
-function lastActivity(conv: ConversationDTO): string {
-  const iso = conv.lastActivityAt ?? conv.createdAt;
+function lastActivity(conversation: ConversationDTO): string {
+  const iso = conversation.lastActivityAt ?? conversation.createdAt;
   const d = new Date(iso);
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
@@ -53,9 +53,9 @@ function lastActivity(conv: ConversationDTO): string {
     : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-function subline(conv: ConversationDTO): string {
-  if (!conv.isGroup) return 'Direct message';
-  return `${conv.participants.length} members`;
+function subline(conversation: ConversationDTO): string {
+  if (!conversation.isGroup) return 'Direct message';
+  return `${conversation.participants.length} members`;
 }
 </script>
 
@@ -121,47 +121,49 @@ function subline(conv: ConversationDTO): string {
         No {{ filter === 'groups' ? 'group chats' : 'direct messages' }} yet.
       </p>
       <ul v-else class="divide-y divide-border">
-        <li v-for="conv in filtered" :key="conv.id" class="group relative">
+        <li v-for="conversation in filtered" :key="conversation.id" class="group relative">
           <button
             type="button"
             class="block w-full py-3 pl-4 text-left transition-colors hover:bg-muted"
             :class="[
-              conv.id === selectedId ? 'bg-accent text-accent-foreground' : '',
-              conv.isStarred ? 'pr-10' : 'pr-10 sm:pr-4 sm:group-hover:pr-10',
+              conversation.id === selectedId ? 'bg-accent text-accent-foreground' : '',
+              conversation.isStarred ? 'pr-10' : 'pr-10 sm:pr-4 sm:group-hover:pr-10',
             ]"
-            @click="selectConversation(conv.id)"
+            @click="selectConversation(conversation.id)"
           >
             <div class="flex items-center justify-between gap-2">
               <span class="flex min-w-0 items-center gap-1.5">
-                <span class="truncate text-sm font-medium">{{ conv.displayName }}</span>
+                <span class="truncate text-sm font-medium">{{ conversation.displayName }}</span>
                 <span
-                  v-if="conv.hasUnreadMessages"
+                  v-if="conversation.hasUnreadMessages"
                   class="h-2 w-2 shrink-0 rounded-full bg-primary"
                   title="New message"
                 />
               </span>
-              <span class="shrink-0 text-xs text-muted-foreground">{{ lastActivity(conv) }}</span>
+              <span class="shrink-0 text-xs text-muted-foreground">{{
+                lastActivity(conversation)
+              }}</span>
             </div>
-            <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ subline(conv) }}</p>
+            <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ subline(conversation) }}</p>
           </button>
           <button
             type="button"
-            :aria-label="conv.isStarred ? 'Unstar conversation' : 'Star conversation'"
-            :title="conv.isStarred ? 'Unstar conversation' : 'Star conversation'"
+            :aria-label="conversation.isStarred ? 'Unstar conversation' : 'Star conversation'"
+            :title="conversation.isStarred ? 'Unstar conversation' : 'Star conversation'"
             class="group/star absolute top-3 right-2 rounded p-1"
             :class="
-              conv.isStarred
+              conversation.isStarred
                 ? 'opacity-100'
                 : 'opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100'
             "
-            @click="emit('toggleStar', conv.id)"
+            @click="emit('toggleStar', conversation.id)"
           >
             <Star
               :size="16"
               :stroke-width="1.75"
               class="transition"
               :class="
-                conv.isStarred
+                conversation.isStarred
                   ? 'fill-star text-star-foreground group-hover/star:opacity-60'
                   : 'fill-transparent text-muted-foreground group-hover/star:fill-muted-foreground'
               "

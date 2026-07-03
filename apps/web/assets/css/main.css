@@ -64,6 +64,7 @@
   --color-overlay: var(--overlay);
   --color-star: var(--star);
   --color-star-foreground: var(--star-foreground);
+  --shadow-message-highlight: 0 2px 20px var(--primary);
 }
 
 @layer base {

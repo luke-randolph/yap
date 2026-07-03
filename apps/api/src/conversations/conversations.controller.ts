@@ -184,6 +184,42 @@ export class ConversationsController {
     return this.messages.createImageMessage(current.sub, conversationId, body, file);
   }
 
+  @Get(':conversationId/messages/pinned')
+  async listPinned(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<MessageDTO[]> {
+    return this.messages.listPinned(current.sub, conversationId);
+  }
+
+  @Post(':conversationId/messages/:messageId/pin')
+  async pin(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+  ): Promise<MessageDTO> {
+    return this.messages.setPinned(current.sub, conversationId, messageId, true);
+  }
+
+  @Delete(':conversationId/messages/:messageId/pin')
+  async unpin(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+  ): Promise<MessageDTO> {
+    return this.messages.setPinned(current.sub, conversationId, messageId, false);
+  }
+
+  @Delete(':conversationId/messages/:messageId')
+  @HttpCode(204)
+  async deleteMessage(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Param('messageId') messageId: string,
+  ): Promise<void> {
+    await this.messages.remove(current.sub, conversationId, messageId);
+  }
+
   @Post(':conversationId/messages/:messageId/reactions')
   async react(
     @CurrentUser() current: AccessTokenPayload,
