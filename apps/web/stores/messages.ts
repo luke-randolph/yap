@@ -16,6 +16,8 @@ export const useMessagesStore = defineStore('messages', () => {
   const byConversation = ref<Record<string, ChatMessage[]>>({});
   const loaded = ref<Record<string, boolean>>({});
   const loading = ref<Record<string, boolean>>({});
+  const hasMore = ref<Record<string, boolean>>({});
+  const loadingOlder = ref<Record<string, boolean>>({});
 
   // Message the composer is replying to; cleared on conversation switch.
   const replyTarget = ref<ChatMessage | null>(null);
@@ -58,6 +60,14 @@ export const useMessagesStore = defineStore('messages', () => {
     return !!loading.value[conversationId];
   }
 
+  function isLoadingOlder(conversationId: string): boolean {
+    return !!loadingOlder.value[conversationId];
+  }
+
+  function canLoadOlder(conversationId: string): boolean {
+    return !!hasMore.value[conversationId];
+  }
+
   async function ensureLoaded(conversationId: string): Promise<void> {
     if (loaded.value[conversationId] || loading.value[conversationId]) return;
     await fetchHistory(conversationId);
@@ -72,11 +82,30 @@ export const useMessagesStore = defineStore('messages', () => {
         query: { limit: PAGINATION.defaultMessageLimit },
       });
       // The API returns newest-first for a default (`before`) query; we render
-      // oldest-first, so reverse before merging.
+      // oldest-first, so reverse before merging into store.
       upsertMany(conversationId, [...rows].reverse());
       loaded.value[conversationId] = true;
+      hasMore.value[conversationId] = rows.length >= PAGINATION.defaultMessageLimit;
     } finally {
       loading.value[conversationId] = false;
+    }
+  }
+
+  async function loadOlder(conversationId: string): Promise<void> {
+    if (loadingOlder.value[conversationId] || !hasMore.value[conversationId]) return;
+    const oldest = byConversation.value[conversationId]?.find((m) => !m.id.startsWith('temp-'));
+    if (!oldest) return;
+
+    loadingOlder.value[conversationId] = true;
+    try {
+      const api = useApi();
+      const rows = await api<MessageDTO[]>(`/conversations/${conversationId}/messages`, {
+        query: { before: oldest.id, limit: PAGINATION.defaultMessageLimit },
+      });
+      upsertMany(conversationId, rows);
+      hasMore.value[conversationId] = rows.length >= PAGINATION.defaultMessageLimit;
+    } finally {
+      loadingOlder.value[conversationId] = false;
     }
   }
 
@@ -306,6 +335,8 @@ export const useMessagesStore = defineStore('messages', () => {
     byConversation.value = {};
     loaded.value = {};
     loading.value = {};
+    hasMore.value = {};
+    loadingOlder.value = {};
     replyTarget.value = null;
     scrollTarget.value = null;
   }
@@ -351,8 +382,11 @@ export const useMessagesStore = defineStore('messages', () => {
     requestScrollTo,
     clearScrollTarget,
     isLoading,
+    isLoadingOlder,
+    canLoadOlder,
     ensureLoaded,
     fetchHistory,
+    loadOlder,
     send,
     sendImage,
     react,

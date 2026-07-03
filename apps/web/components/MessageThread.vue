@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Pin } from 'lucide-vue-next';
+import { ChevronDown, Pin } from 'lucide-vue-next';
 import type { ConversationDTO } from '@yap/contracts';
 import type { ChatMessage } from '~/stores/messages';
 
@@ -16,9 +16,12 @@ const deleting = ref(false);
 const highlightedId = ref<string | null>(null);
 
 const scroller = ref<HTMLElement | null>(null);
+const isAtBottom = ref(true);
+const hasNewMessages = ref(false);
 
 const items = computed(() => messages.list(props.conversation.id));
 const loading = computed(() => messages.isLoading(props.conversation.id));
+const loadingOlder = computed(() => messages.isLoadingOlder(props.conversation.id));
 
 const senderById = computed(() => {
   const map = new Map<string, ConversationDTO['participants'][number]['user']>();
@@ -103,10 +106,25 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
-async function scrollToBottom() {
+async function scrollToBottom(smooth = false) {
   await nextTick();
   const el = scroller.value;
-  if (el) el.scrollTop = el.scrollHeight;
+  if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+async function onScroll() {
+  const el = scroller.value;
+  if (!el) return;
+  isAtBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 150;
+  if (isAtBottom.value) hasNewMessages.value = false;
+
+  if (el.scrollTop < 200 && messages.canLoadOlder(props.conversation.id) && !loadingOlder.value) {
+    const previousHeight = el.scrollHeight;
+    await messages.loadOlder(props.conversation.id);
+    await nextTick();
+    // Older messages were prepended above; offset by their height so the view stays put.
+    el.scrollTop = el.scrollHeight - previousHeight;
+  }
 }
 
 let highlightTimer: ReturnType<typeof setTimeout> | null = null;
@@ -129,13 +147,34 @@ watch(
   () => props.conversation.id,
   async (id) => {
     messages.clearReplyTarget();
+    isAtBottom.value = true;
     await messages.ensureLoaded(id);
     scrollToBottom();
   },
   { immediate: true },
 );
 
-watch(() => items.value.length, scrollToBottom);
+function showLatest() {
+  hasNewMessages.value = false;
+  scrollToBottom(true);
+}
+
+watch(
+  () => {
+    const last = items.value[items.value.length - 1];
+    return last ? (last.clientMessageId ?? last.id) : null;
+  },
+  (key, prevKey) => {
+    if (!key || key === prevKey) return;
+    const last = items.value[items.value.length - 1];
+    if (!last) return;
+    if (isFromCurrentUser(last.senderId) || isAtBottom.value) {
+      showLatest();
+    } else {
+      hasNewMessages.value = true;
+    }
+  },
+);
 
 watch(
   () => messages.scrollTarget,
@@ -147,7 +186,12 @@ watch(
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col">
-    <div ref="scroller" class="min-h-0 flex-1 overflow-y-auto bg-background px-6 py-4">
+    <div class="relative flex min-h-0 flex-1 flex-col">
+    <div
+      ref="scroller"
+      class="min-h-0 flex-1 overflow-y-auto bg-background px-6 py-4"
+      @scroll.passive="onScroll"
+    >
       <p
         v-if="loading && items.length === 0"
         class="py-6 text-center text-sm text-muted-foreground"
@@ -158,7 +202,9 @@ watch(
         No messages yet. Say hello 👋
       </p>
 
-      <ul v-else class="flex flex-col gap-2">
+      <p v-if="loadingOlder" class="py-2 text-center text-sm text-muted-foreground">Loading…</p>
+
+      <ul v-if="items.length > 0" class="flex flex-col gap-2">
         <template v-for="(m, i) in items" :key="m.clientMessageId ?? m.id">
         <li v-if="m.type === 'system'" class="my-1 flex justify-center">
           <span class="rounded-full bg-muted/60 px-3 py-1 text-xs text-muted-foreground">
@@ -268,6 +314,17 @@ watch(
         </li>
         </template>
       </ul>
+    </div>
+
+      <button
+        v-if="hasNewMessages"
+        type="button"
+        class="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition hover:opacity-90"
+        @click="showLatest"
+      >
+        <ChevronDown class="h-4 w-4" />
+        New messages
+      </button>
     </div>
 
     <MessageComposer :conversation-id="conversation.id" />
