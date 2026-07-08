@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Check, Menu, Pencil, Pin, Users, X } from 'lucide-vue-next';
-import { getApiError, type ConversationDTO } from '@yap/contracts';
+import { getApiError, type ConversationDTO, type UserPublicDTO } from '@yap/contracts';
 
 const props = defineProps<{
   conversation: ConversationDTO;
 }>();
 
+const auth = useAuthStore();
 const conversations = useConversationsStore();
 const sidebar = useSidebarStore();
 const toasts = useToastsStore();
@@ -16,6 +17,13 @@ const discPeople = computed(() => props.conversation.participants.map((p) => p.u
 
 const shownDiscs = computed(() => discPeople.value.slice(0, MAX_DISCS));
 const extraDiscs = computed(() => Math.max(0, discPeople.value.length - MAX_DISCS));
+
+const otherUser = computed(() => discPeople.value.find((u) => u.id !== auth.user?.id) ?? null);
+const selectedUser = ref<UserPublicDTO | null>(null);
+
+function openProfile(user: UserPublicDTO) {
+  if (user.id !== auth.user?.id) selectedUser.value = user;
+}
 
 const showParticipants = ref(false);
 const showPinned = ref(false);
@@ -102,9 +110,16 @@ async function saveName() {
         <Menu class="h-5 w-5" />
       </button>
       <div class="flex items-center -space-x-2">
-        <span v-for="u in shownDiscs" :key="u.id" class="flex rounded-full ring-1 ring-border">
+        <button
+          v-for="u in shownDiscs"
+          :key="u.id"
+          type="button"
+          class="flex rounded-full ring-1 ring-border hover:opacity-80"
+          :title="u.displayName"
+          @click="openProfile(u)"
+        >
           <UserAvatar :name="u.displayName" :src="u.avatarUrl" :size="28" />
-        </span>
+        </button>
         <span
           v-if="extraDiscs"
           class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground ring-1 ring-border"
@@ -112,7 +127,15 @@ async function saveName() {
           +{{ extraDiscs }}
         </span>
       </div>
-      <h2 class="text-lg font-medium">{{ conversation.displayName }}</h2>
+      <button
+        v-if="!conversation.isGroup && otherUser"
+        type="button"
+        class="text-lg font-medium hover:underline"
+        @click="openProfile(otherUser)"
+      >
+        {{ conversation.displayName }}
+      </button>
+      <h2 v-else class="text-lg font-medium">{{ conversation.displayName }}</h2>
       <div>
         <button
           v-if="conversation.isGroup"
@@ -162,5 +185,6 @@ async function saveName() {
       :conversation="conversation"
       @close="showPinned = false"
     />
+    <UserProfileModal v-if="selectedUser" :user="selectedUser" @close="selectedUser = null" />
   </header>
 </template>

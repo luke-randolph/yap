@@ -97,6 +97,21 @@ export const useConversationsStore = defineStore('conversations', () => {
     remove(id);
   }
 
+  async function acceptRequest(id: string): Promise<ConversationDTO> {
+    const api = useApi();
+    const conversation = await api<ConversationDTO>(`/conversations/${id}/accept-request`, {
+      method: 'POST',
+    });
+    addOrReplace(conversation);
+    return conversation;
+  }
+
+  async function declineRequest(id: string) {
+    const api = useApi();
+    await api(`/conversations/${id}/decline-request`, { method: 'POST' });
+    remove(id);
+  }
+
   async function fetchBlocked(): Promise<ConversationDTO[]> {
     const api = useApi();
     return api<ConversationDTO[]>('/conversations/blocked');
@@ -171,6 +186,8 @@ export const useConversationsStore = defineStore('conversations', () => {
     addParticipants,
     leave,
     block,
+    acceptRequest,
+    declineRequest,
     fetchBlocked,
     unblock,
     select,

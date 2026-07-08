@@ -29,6 +29,7 @@ const pending = ref<Set<string>>(new Set());
 
 const confirming = ref<'leave' | 'block' | null>(null);
 const actionLoading = ref(false);
+const selectedUser = ref<UserPublicDTO | null>(null);
 
 const activeEmails = computed(() => new Set(active.value.map((p) => p.user.email)));
 
@@ -118,6 +119,10 @@ async function confirmAction() {
 function isSelf(p: ParticipantDTO): boolean {
   return p.user.id === auth.user?.id;
 }
+
+function openProfile(user: UserPublicDTO) {
+  if (user.id !== auth.user?.id) selectedUser.value = user;
+}
 </script>
 
 <template>
@@ -191,11 +196,25 @@ function isSelf(p: ParticipantDTO): boolean {
             :key="p.user.id"
             class="flex items-center gap-2 rounded-md px-1 py-1.5"
           >
-            <UserAvatar :name="p.user.displayName" :src="p.user.avatarUrl" :size="32" />
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-medium">{{ p.user.displayName }}</span>
-              <span class="block truncate text-xs text-muted-foreground">{{ p.user.email }}</span>
-            </span>
+            <button
+              v-if="!isSelf(p)"
+              type="button"
+              class="flex min-w-0 flex-1 items-center gap-2 text-left hover:opacity-80"
+              @click="openProfile(p.user)"
+            >
+              <UserAvatar :name="p.user.displayName" :src="p.user.avatarUrl" :size="32" />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium">{{ p.user.displayName }}</span>
+                <span class="block truncate text-xs text-muted-foreground">{{ p.user.email }}</span>
+              </span>
+            </button>
+            <div v-else class="flex min-w-0 flex-1 items-center gap-2">
+              <UserAvatar :name="p.user.displayName" :src="p.user.avatarUrl" :size="32" />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium">{{ p.user.displayName }}</span>
+                <span class="block truncate text-xs text-muted-foreground">{{ p.user.email }}</span>
+              </span>
+            </div>
             <span v-if="isSelf(p)" class="text-xs text-muted-foreground">You</span>
             <span
               v-else-if="p.isAdmin"
@@ -217,11 +236,19 @@ function isSelf(p: ParticipantDTO): boolean {
               :key="p.user.id"
               class="flex items-center gap-2 rounded-md px-1 py-1.5"
             >
-              <UserAvatar :name="p.user.displayName" :src="p.user.avatarUrl" :size="32" />
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-medium">{{ p.user.displayName }}</span>
-                <span class="block truncate text-xs text-muted-foreground">{{ p.user.email }}</span>
-              </span>
+              <button
+                type="button"
+                class="flex min-w-0 flex-1 items-center gap-2 text-left hover:opacity-80"
+                @click="openProfile(p.user)"
+              >
+                <UserAvatar :name="p.user.displayName" :src="p.user.avatarUrl" :size="32" />
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm font-medium">{{ p.user.displayName }}</span>
+                  <span class="block truncate text-xs text-muted-foreground">{{
+                    p.user.email
+                  }}</span>
+                </span>
+              </button>
               <button
                 type="button"
                 :disabled="pending.has(p.user.email)"
@@ -276,5 +303,7 @@ function isSelf(p: ParticipantDTO): boolean {
       @confirm="confirmAction"
       @cancel="confirming = null"
     />
+
+    <UserProfileModal v-if="selectedUser" :user="selectedUser" @close="selectedUser = null" />
   </div>
 </template>

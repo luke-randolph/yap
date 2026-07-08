@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import { Menu, Shield } from 'lucide-vue-next';
+import { Menu, Shield, Users } from 'lucide-vue-next';
 import type { ConversationDTO } from '@yap/contracts';
 
 const auth = useAuthStore();
 const conversations = useConversationsStore();
 const messages = useMessagesStore();
+const friends = useFriendsStore();
 const socket = useSocket();
 const sidebar = useSidebarStore();
 
 const showNewConversation = ref(false);
 const showProfile = ref(false);
 const showAdmin = ref(false);
+const showFriends = ref(false);
 
 useRealtimeSync();
 
 onMounted(async () => {
   await conversations.fetchAll();
+  friends.fetchAll().catch(() => undefined);
 });
 
 function onCreated(conversation: ConversationDTO) {
@@ -28,6 +31,7 @@ function resetClient() {
   socket.disconnect();
   conversations.reset();
   messages.reset();
+  friends.reset();
 }
 
 async function handleLogout() {
@@ -52,6 +56,18 @@ async function handleExitDemo() {
       </h1>
       <div class="flex items-center gap-3">
         <ThemeToggle />
+        <button
+          type="button"
+          class="relative rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          title="Friends"
+          @click="showFriends = true"
+        >
+          <Users class="h-5 w-5" />
+          <span
+            v-if="friends.incomingCount"
+            class="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-primary"
+          />
+        </button>
         <button
           v-if="auth.user?.isAdmin"
           type="button"
@@ -105,7 +121,21 @@ async function handleExitDemo() {
         </div>
         <div v-else class="flex min-h-0 flex-1 flex-col">
           <ConversationHeader :conversation="conversations.selected" />
-          <MessageThread :key="conversations.selected.id" :conversation="conversations.selected" />
+          <MessageRequestBanner
+            v-if="conversations.selected.requestState === 'incoming'"
+            :conversation="conversations.selected"
+          />
+          <p
+            v-else-if="conversations.selected.requestState === 'outgoing'"
+            class="border-b border-border bg-accent/40 px-6 py-2 text-center text-xs text-accent-foreground"
+          >
+            Waiting for {{ conversations.selected.displayName }} to accept your message request.
+          </p>
+          <MessageThread
+            :key="conversations.selected.id"
+            :conversation="conversations.selected"
+            :readonly="conversations.selected.requestState === 'incoming'"
+          />
         </div>
       </main>
     </div>
@@ -115,6 +145,8 @@ async function handleExitDemo() {
       @close="showNewConversation = false"
       @created="onCreated"
     />
+
+    <FriendsModal v-if="showFriends" @close="showFriends = false" />
 
     <ProfileModal
       v-if="showProfile"

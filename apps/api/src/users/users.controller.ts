@@ -4,6 +4,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  Param,
   Patch,
   Post,
   Query,
@@ -64,5 +66,30 @@ export class UsersController {
     @Query(new ZodValidationPipe(userSearchQuerySchema)) query: UserSearchQueryInput,
   ): Promise<UserPublicDTO[]> {
     return this.users.search(current.sub, query.q);
+  }
+
+  @Get('blocked')
+  blocked(@CurrentUser() current: AccessTokenPayload): Promise<UserPublicDTO[]> {
+    return this.users.listBlocked(current.sub);
+  }
+
+  @Post(':id/block')
+  @HttpCode(204)
+  block(@CurrentUser() current: AccessTokenPayload, @Param('id') id: string): Promise<void> {
+    return this.users.blockUser(current.sub, id);
+  }
+
+  @Delete(':id/block')
+  @HttpCode(204)
+  unblock(@CurrentUser() current: AccessTokenPayload, @Param('id') id: string): Promise<void> {
+    return this.users.unblockUser(current.sub, id);
+  }
+
+  @Get(':id')
+  profile(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('id') id: string,
+  ): Promise<UserPublicDTO> {
+    return this.users.getProfile(current.sub, id);
   }
 }

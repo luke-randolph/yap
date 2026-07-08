@@ -25,10 +25,13 @@ const filterOptions: { value: ConversationFilter; label: string }[] = [
 ];
 const filter = ref<ConversationFilter>('all');
 
+const requests = computed(() => props.conversations.filter((c) => c.requestState === 'incoming'));
+const accepted = computed(() => props.conversations.filter((c) => c.requestState !== 'incoming'));
+
 const filtered = computed(() => {
-  if (filter.value === 'groups') return props.conversations.filter((c) => c.isGroup);
-  if (filter.value === 'dms') return props.conversations.filter((c) => !c.isGroup);
-  return props.conversations;
+  if (filter.value === 'groups') return accepted.value.filter((c) => c.isGroup);
+  if (filter.value === 'dms') return accepted.value.filter((c) => !c.isGroup);
+  return accepted.value;
 });
 
 function selectConversation(id: string) {
@@ -54,6 +57,7 @@ function lastActivity(conversation: ConversationDTO): string {
 }
 
 function subline(conversation: ConversationDTO): string {
+  if (conversation.requestState === 'outgoing') return 'Request pending';
   if (!conversation.isGroup) return 'Direct message';
   return `${conversation.participants.length} members`;
 }
@@ -114,63 +118,105 @@ function subline(conversation: ConversationDTO): string {
       >
         Loading…
       </p>
-      <p v-else-if="conversations.length === 0" class="px-4 py-6 text-sm text-muted-foreground">
-        No chats yet. Tap <span class="font-medium text-foreground">+</span> to start one.
-      </p>
-      <p v-else-if="filtered.length === 0" class="px-4 py-6 text-sm text-muted-foreground">
-        No {{ filter === 'groups' ? 'group chats' : 'direct messages' }} yet.
-      </p>
-      <ul v-else class="divide-y divide-border">
-        <li v-for="conversation in filtered" :key="conversation.id" class="group relative">
-          <button
-            type="button"
-            class="block w-full py-3 pl-4 text-left transition-colors hover:bg-muted"
-            :class="[
-              conversation.id === selectedId ? 'bg-accent text-accent-foreground' : '',
-              conversation.isStarred ? 'pr-10' : 'pr-10 sm:pr-4 sm:group-hover:pr-10',
-            ]"
-            @click="selectConversation(conversation.id)"
+      <template v-else>
+        <div v-if="requests.length" class="border-b border-border">
+          <p
+            class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
           >
-            <div class="flex items-center justify-between gap-2">
-              <span class="flex min-w-0 items-center gap-1.5">
-                <span class="truncate text-sm font-medium">{{ conversation.displayName }}</span>
-                <span
-                  v-if="conversation.hasUnreadMessages"
-                  class="h-2 w-2 shrink-0 rounded-full bg-primary"
-                  title="New message"
-                />
-              </span>
-              <span class="shrink-0 text-xs text-muted-foreground">{{
-                lastActivity(conversation)
-              }}</span>
-            </div>
-            <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ subline(conversation) }}</p>
-          </button>
-          <button
-            type="button"
-            :aria-label="conversation.isStarred ? 'Unstar conversation' : 'Star conversation'"
-            :title="conversation.isStarred ? 'Unstar conversation' : 'Star conversation'"
-            class="group/star absolute top-3 right-2 rounded p-1"
-            :class="
-              conversation.isStarred
-                ? 'opacity-100'
-                : 'opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100'
-            "
-            @click="emit('toggleStar', conversation.id)"
-          >
-            <Star
-              :size="16"
-              :stroke-width="1.75"
-              class="transition"
+            Requests
+          </p>
+          <ul class="divide-y divide-border">
+            <li v-for="conversation in requests" :key="conversation.id">
+              <button
+                type="button"
+                class="block w-full px-4 py-3 text-left transition-colors hover:bg-muted"
+                :class="conversation.id === selectedId ? 'bg-accent text-accent-foreground' : ''"
+                @click="selectConversation(conversation.id)"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span class="truncate text-sm font-medium">{{ conversation.displayName }}</span>
+                  <span class="shrink-0 text-xs text-muted-foreground">{{
+                    lastActivity(conversation)
+                  }}</span>
+                </div>
+                <p class="mt-0.5 truncate text-xs text-muted-foreground">wants to message you</p>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <p
+          v-if="!requests.length && accepted.length === 0"
+          class="px-4 py-6 text-sm text-muted-foreground"
+        >
+          No chats yet. Tap <span class="font-medium text-foreground">+</span> to start one.
+        </p>
+        <p
+          v-else-if="accepted.length > 0 && filtered.length === 0"
+          class="px-4 py-6 text-sm text-muted-foreground"
+        >
+          No {{ filter === 'groups' ? 'group chats' : 'direct messages' }} yet.
+        </p>
+        <p
+          v-if="requests.length && filtered.length"
+          class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+        >
+          Messages
+        </p>
+        <ul v-if="filtered.length" class="divide-y divide-border">
+          <li v-for="conversation in filtered" :key="conversation.id" class="group relative">
+            <button
+              type="button"
+              class="block w-full py-3 pl-4 text-left transition-colors hover:bg-muted"
+              :class="[
+                conversation.id === selectedId ? 'bg-accent text-accent-foreground' : '',
+                conversation.isStarred ? 'pr-10' : 'pr-10 sm:pr-4 sm:group-hover:pr-10',
+              ]"
+              @click="selectConversation(conversation.id)"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="flex min-w-0 items-center gap-1.5">
+                  <span class="truncate text-sm font-medium">{{ conversation.displayName }}</span>
+                  <span
+                    v-if="conversation.hasUnreadMessages"
+                    class="h-2 w-2 shrink-0 rounded-full bg-primary"
+                    title="New message"
+                  />
+                </span>
+                <span class="shrink-0 text-xs text-muted-foreground">{{
+                  lastActivity(conversation)
+                }}</span>
+              </div>
+              <p class="mt-0.5 truncate text-xs text-muted-foreground">
+                {{ subline(conversation) }}
+              </p>
+            </button>
+            <button
+              type="button"
+              :aria-label="conversation.isStarred ? 'Unstar conversation' : 'Star conversation'"
+              :title="conversation.isStarred ? 'Unstar conversation' : 'Star conversation'"
+              class="group/star absolute top-3 right-2 rounded p-1"
               :class="
                 conversation.isStarred
-                  ? 'fill-star text-star-foreground group-hover/star:opacity-60'
-                  : 'fill-transparent text-muted-foreground group-hover/star:fill-muted-foreground'
+                  ? 'opacity-100'
+                  : 'opacity-100 sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100'
               "
-            />
-          </button>
-        </li>
-      </ul>
+              @click="emit('toggleStar', conversation.id)"
+            >
+              <Star
+                :size="16"
+                :stroke-width="1.75"
+                class="transition"
+                :class="
+                  conversation.isStarred
+                    ? 'fill-star text-star-foreground group-hover/star:opacity-60'
+                    : 'fill-transparent text-muted-foreground group-hover/star:fill-muted-foreground'
+                "
+              />
+            </button>
+          </li>
+        </ul>
+      </template>
     </div>
   </aside>
 </template>

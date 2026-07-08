@@ -127,6 +127,23 @@ export class ConversationsController {
     return this.conversations.addParticipants(current.sub, conversationId, body.participantEmails);
   }
 
+  @Post(':conversationId/accept-request')
+  async acceptRequest(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<ConversationDTO> {
+    return this.conversations.acceptRequest(current.sub, conversationId);
+  }
+
+  @Post(':conversationId/decline-request')
+  @HttpCode(204)
+  async declineRequest(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+  ): Promise<void> {
+    await this.conversations.declineRequest(current.sub, conversationId);
+  }
+
   @Post(':conversationId/leave')
   @HttpCode(204)
   async leave(

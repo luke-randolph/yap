@@ -17,6 +17,7 @@ import {
   type UpdateConversationInput,
 } from '@yap/contracts';
 import { EmailService } from '../email/email.service';
+import { FriendsService } from '../friends/friends.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   REALTIME_EVENTS,
@@ -52,6 +53,7 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
     private readonly email: EmailService,
+    private readonly friends: FriendsService,
   ) {}
 
   async create(currentUserId: string, input: CreateConversationInput): Promise<ConversationDTO> {
@@ -76,6 +78,17 @@ export class ConversationsService {
 
     assertRecipientsAllowed(currentUser.kind, others);
 
+    for (const other of others) {
+      if (await this.friends.isBlockedEitherDirection(currentUserId, other.id)) {
+        throw new ForbiddenException({
+          error: {
+            code: CONVERSATION_ERROR_CODES.recipientsNotAllowed,
+            message: 'This person is not available.',
+          },
+        });
+      }
+    }
+
     const otherIds = others.map((u) => u.id);
     const isGroup = otherIds.length > 1;
 
@@ -84,11 +97,14 @@ export class ConversationsService {
       if (existing) return this.toDto(existing, currentUserId);
     }
 
+    const isRequest = !isGroup && !(await this.friends.areFriends(currentUserId, otherIds[0]));
+
     const created = await this.prisma.conversation.create({
       data: {
         isGroup,
         name: isGroup ? (input.name ?? null) : null,
         createdById: currentUserId,
+        requestPending: isRequest,
         participants: {
           create: [currentUser.id, ...otherIds].map((userId) => ({
             userId,
@@ -266,6 +282,58 @@ export class ConversationsService {
     });
     // Same notice as leaving; blocking is private and shouldn't be revealed.
     await this.announceDeparture(currentUserId, conversationId);
+  }
+
+  async acceptRequest(currentUserId: string, conversationId: string): Promise<ConversationDTO> {
+    await this.assertParticipant(currentUserId, conversationId);
+    await this.assertRecipientOfPendingRequest(currentUserId, conversationId);
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { requestPending: false },
+    });
+    const row = await this.prisma.conversation.findUniqueOrThrow({
+      where: { id: conversationId },
+      include: conversationInclude,
+    });
+    const { actorDto, byUserId } = this.perUserDtos(row, currentUserId);
+    this.events.emit(REALTIME_EVENTS.conversationUpdated, { conversationByUserId: byUserId });
+    return actorDto;
+  }
+
+  // Declining a message request leaves the DM; the sender keeps their copy, and
+  // messaging again creates a fresh request.
+  async declineRequest(currentUserId: string, conversationId: string): Promise<void> {
+    await this.assertParticipant(currentUserId, conversationId);
+    await this.assertRecipientOfPendingRequest(currentUserId, conversationId);
+    await this.prisma.$transaction([
+      this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: { requestPending: false },
+      }),
+      this.prisma.conversationParticipant.update({
+        where: { conversationId_userId: { conversationId, userId: currentUserId } },
+        data: { leftAt: new Date(), isStarred: false },
+      }),
+    ]);
+    await this.emitDeparture(conversationId, currentUserId);
+  }
+
+  private async assertRecipientOfPendingRequest(
+    currentUserId: string,
+    conversationId: string,
+  ): Promise<void> {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { requestPending: true, createdById: true },
+    });
+    if (!conversation?.requestPending || conversation.createdById === currentUserId) {
+      throw new BadRequestException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.notRequest,
+          message: 'Conversation is not a pending request',
+        },
+      });
+    }
   }
 
   private async announceDeparture(userId: string, conversationId: string): Promise<void> {
@@ -513,6 +581,11 @@ export class ConversationsService {
       createdAt: row.createdAt.toISOString(),
       hasUnreadMessages,
       isStarred: currentParticipant?.isStarred ?? false,
+      requestState: row.requestPending
+        ? row.createdById === currentUserId
+          ? 'outgoing'
+          : 'incoming'
+        : 'none',
     };
   }
 }

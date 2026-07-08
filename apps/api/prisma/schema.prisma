@@ -24,11 +24,15 @@ model User {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  participants  ConversationParticipant[]
-  messages      Message[]
-  reactions     MessageReaction[]
-  otps          EmailOtp[]
-  refreshTokens RefreshToken[]
+  participants         ConversationParticipant[]
+  messages             Message[]
+  reactions            MessageReaction[]
+  otps                 EmailOtp[]
+  refreshTokens        RefreshToken[]
+  friendshipsRequested Friendship[]              @relation("FriendshipRequester")
+  friendshipsReceived  Friendship[]              @relation("FriendshipAddressee")
+  blocksInitiated      Block[]                   @relation("BlockBlocker")
+  blocksReceived       Block[]                   @relation("BlockBlocked")
 
   @@index([kind])
 }
@@ -84,6 +88,44 @@ model RefreshToken {
   @@index([expiresAt])
 }
 
+enum FriendshipStatus {
+  pending
+  accepted
+}
+
+// One row per relationship. requester sent it, addressee acts on it.
+// Service checks both directions before creating to avoid reverse duplicates.
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(pending)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  acceptedAt  DateTime?
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id])
+  addressee User @relation("FriendshipAddressee", fields: [addresseeId], references: [id])
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+  @@index([requesterId])
+}
+
+// User-level block, distinct from ConversationParticipant.blockedAt (which is group-scoped).
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlockBlocker", fields: [blockerId], references: [id])
+  blocked User @relation("BlockBlocked", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
 model Conversation {
   id             String    @id @default(cuid())
   isGroup        Boolean   @default(false)
@@ -92,6 +134,7 @@ model Conversation {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   lastActivityAt DateTime? // last activity (currently messages); denormalized for cheap sidebar ordering
+  requestPending Boolean   @default(false)
 
   participants ConversationParticipant[]
   messages     Message[]
