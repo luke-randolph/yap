@@ -40,7 +40,6 @@ export interface ParticipantDTO {
   joinedAt: string;
   leftAt: string | null;
   lastReadMessageId: string | null;
-  isAdmin: boolean;
 }
 
 export type ConversationRequestState = 'none' | 'incoming' | 'outgoing';
@@ -50,6 +49,7 @@ export interface ConversationDTO {
   isGroup: boolean;
   name: string | null;
   displayName: string;
+  createdById: string;
   participants: ParticipantDTO[];
   lastActivityAt: string | null;
   createdAt: string;

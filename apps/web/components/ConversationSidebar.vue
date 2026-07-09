@@ -71,10 +71,10 @@ function subline(conversation: ConversationDTO): string {
     class="absolute inset-y-0 left-0 z-40 flex h-full w-full flex-col border-r border-border bg-card transition-transform duration-300 ease-in-out md:static md:z-auto md:w-80 md:translate-x-0"
     :class="sidebar.isOpen ? 'translate-x-0' : '-translate-x-full'"
   >
-    <div v-if="requests.length" class="border-b border-primary">
+    <div v-if="requests.length" class="border-b border-primary bg-muted">
       <button
         type="button"
-        class="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted"
+        class="flex w-full items-center justify-between p-4 transition-colors hover:bg-border"
         :aria-expanded="requestsOpen"
         @click="requestsOpen = !requestsOpen"
       >
@@ -97,8 +97,8 @@ function subline(conversation: ConversationDTO): string {
         <li v-for="conversation in requests" :key="conversation.id">
           <button
             type="button"
-            class="block w-full px-4 py-3 text-left transition-colors hover:bg-muted"
-            :class="conversation.id === selectedId ? 'bg-accent text-accent-foreground' : ''"
+            class="block w-full px-4 py-3 text-left transition-colors hover:bg-border"
+            :class="conversation.id === selectedId ? 'bg-border text-primary' : ''"
             @click="selectConversation(conversation.id)"
           >
             <div class="flex items-center justify-between gap-2">
@@ -114,7 +114,7 @@ function subline(conversation: ConversationDTO): string {
 
     <div class="flex items-center justify-between border-b border-border px-4 py-3">
       <h2 class="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Chats</h2>
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-2">
         <button
           type="button"
           class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

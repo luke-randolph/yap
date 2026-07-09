@@ -1,7 +1,15 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { DEMO_CHARACTERS, DEMO_DM, DEMO_GROUP, GUEST_NAMES } from './demo.data';
+import {
+  DEMO_CHARACTERS,
+  DEMO_DM,
+  DEMO_FRIEND_REQUEST_FROM,
+  DEMO_FRIENDS,
+  DEMO_GROUP,
+  DEMO_MESSAGE_REQUEST,
+  GUEST_NAMES,
+} from './demo.data';
 
 const MESSAGE_SPACING_MS = 60_000;
 
@@ -34,6 +42,7 @@ export class DemoService {
 
     await this.seedGroup(guest.id, demoIds);
     await this.seedDm(guest.id, demoIds);
+    await this.seedFriendsAndRequests(guest.id, demoIds);
     return guest.id;
   }
 
@@ -52,6 +61,12 @@ export class DemoService {
 
     await this.prisma.$transaction([
       this.prisma.conversation.deleteMany({ where: { id: { in: conversationIds } } }),
+      this.prisma.friendship.deleteMany({
+        where: { OR: [{ requesterId: userId }, { addresseeId: userId }] },
+      }),
+      this.prisma.block.deleteMany({
+        where: { OR: [{ blockerId: userId }, { blockedId: userId }] },
+      }),
       this.prisma.refreshToken.deleteMany({ where: { userId } }),
       this.prisma.emailOtp.deleteMany({ where: { userId } }),
       this.prisma.user.delete({ where: { id: userId } }),
@@ -69,7 +84,7 @@ export class DemoService {
         name: DEMO_GROUP.name,
         createdById: creatorId,
         participants: {
-          create: memberIds.map((userId) => ({ userId, isAdmin: userId === creatorId })),
+          create: memberIds.map((userId) => ({ userId })),
         },
       },
     });
@@ -96,6 +111,43 @@ export class DemoService {
     await this.seedMessages(
       conversation.id,
       DEMO_DM.messages.map((m) => ({ senderId: demoIds[m.from], body: m.body })),
+      base,
+    );
+  }
+
+  private async seedFriendsAndRequests(
+    guestId: string,
+    demoIds: Record<string, string>,
+  ): Promise<void> {
+    for (const email of DEMO_FRIENDS) {
+      await this.prisma.friendship.create({
+        data: {
+          requesterId: demoIds[email],
+          addresseeId: guestId,
+          status: 'accepted',
+          acceptedAt: new Date(),
+        },
+      });
+    }
+
+    await this.prisma.friendship.create({
+      data: { requesterId: demoIds[DEMO_FRIEND_REQUEST_FROM], addresseeId: guestId },
+    });
+
+    const senderId = demoIds[DEMO_MESSAGE_REQUEST.from];
+    const base = Date.now() - DEMO_MESSAGE_REQUEST.messages.length * MESSAGE_SPACING_MS;
+    const conversation = await this.prisma.conversation.create({
+      data: {
+        isGroup: false,
+        createdById: senderId,
+        requestPending: true,
+        participants: { create: [{ userId: guestId }, { userId: senderId }] },
+      },
+    });
+
+    await this.seedMessages(
+      conversation.id,
+      DEMO_MESSAGE_REQUEST.messages.map((m) => ({ senderId: demoIds[m.from], body: m.body })),
       base,
     );
   }

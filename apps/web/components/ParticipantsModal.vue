@@ -217,10 +217,10 @@ function openProfile(user: UserPublicDTO) {
             </div>
             <span v-if="isSelf(p)" class="text-xs text-muted-foreground">You</span>
             <span
-              v-else-if="p.isAdmin"
+              v-else-if="p.user.id === conversation.createdById"
               class="rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground"
             >
-              Admin
+              Creator
             </span>
           </li>
         </ul>
