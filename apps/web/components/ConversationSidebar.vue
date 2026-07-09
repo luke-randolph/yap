@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Star, X } from 'lucide-vue-next';
+import { ChevronDown, Plus, Star, X } from 'lucide-vue-next';
 import type { ConversationDTO } from '@yap/contracts';
 
 const props = defineProps<{
@@ -24,6 +24,7 @@ const filterOptions: { value: ConversationFilter; label: string }[] = [
   { value: 'dms', label: 'DMs' },
 ];
 const filter = ref<ConversationFilter>('all');
+const requestsOpen = ref(false);
 
 const requests = computed(() => props.conversations.filter((c) => c.requestState === 'incoming'));
 const accepted = computed(() => props.conversations.filter((c) => c.requestState !== 'incoming'));
@@ -70,12 +71,53 @@ function subline(conversation: ConversationDTO): string {
     class="absolute inset-y-0 left-0 z-40 flex h-full w-full flex-col border-r border-border bg-card transition-transform duration-300 ease-in-out md:static md:z-auto md:w-80 md:translate-x-0"
     :class="sidebar.isOpen ? 'translate-x-0' : '-translate-x-full'"
   >
+    <div v-if="requests.length" class="border-b border-primary">
+      <button
+        type="button"
+        class="flex w-full items-center justify-between p-4 transition-colors hover:bg-muted"
+        :aria-expanded="requestsOpen"
+        @click="requestsOpen = !requestsOpen"
+      >
+        <span class="flex items-center gap-2">
+          <h2 class="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+            Requests
+          </h2>
+          <span
+            class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-primary text-xs text-primary-foreground"
+          >
+            {{ requests.length }}
+          </span>
+        </span>
+        <ChevronDown
+          class="h-4 w-4 mr-1 text-muted-foreground transition-transform"
+          :class="requestsOpen ? '' : '-rotate-90'"
+        />
+      </button>
+      <ul v-show="requestsOpen" class="max-h-[40vh] divide-y divide-border overflow-y-auto">
+        <li v-for="conversation in requests" :key="conversation.id">
+          <button
+            type="button"
+            class="block w-full px-4 py-3 text-left transition-colors hover:bg-muted"
+            :class="conversation.id === selectedId ? 'bg-accent text-accent-foreground' : ''"
+            @click="selectConversation(conversation.id)"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span class="truncate text-sm font-medium">{{ conversation.displayName }}</span>
+              <span class="shrink-0 text-xs text-muted-foreground">{{
+                lastActivity(conversation)
+              }}</span>
+            </div>
+          </button>
+        </li>
+      </ul>
+    </div>
+
     <div class="flex items-center justify-between border-b border-border px-4 py-3">
       <h2 class="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Chats</h2>
       <div class="flex items-center gap-1">
         <button
           type="button"
-          class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           title="New chat"
           aria-label="New chat"
           @click="emit('newConversation')"
@@ -84,7 +126,7 @@ function subline(conversation: ConversationDTO): string {
         </button>
         <button
           type="button"
-          class="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+          class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
           title="Close chats"
           aria-label="Close chats"
           @click="sidebar.close"
@@ -119,32 +161,6 @@ function subline(conversation: ConversationDTO): string {
         Loading…
       </p>
       <template v-else>
-        <div v-if="requests.length" class="border-b border-border">
-          <p
-            class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-          >
-            Requests
-          </p>
-          <ul class="divide-y divide-border">
-            <li v-for="conversation in requests" :key="conversation.id">
-              <button
-                type="button"
-                class="block w-full px-4 py-3 text-left transition-colors hover:bg-muted"
-                :class="conversation.id === selectedId ? 'bg-accent text-accent-foreground' : ''"
-                @click="selectConversation(conversation.id)"
-              >
-                <div class="flex items-center justify-between gap-2">
-                  <span class="truncate text-sm font-medium">{{ conversation.displayName }}</span>
-                  <span class="shrink-0 text-xs text-muted-foreground">{{
-                    lastActivity(conversation)
-                  }}</span>
-                </div>
-                <p class="mt-0.5 truncate text-xs text-muted-foreground">wants to message you</p>
-              </button>
-            </li>
-          </ul>
-        </div>
-
         <p
           v-if="!requests.length && accepted.length === 0"
           class="px-4 py-6 text-sm text-muted-foreground"
@@ -156,12 +172,6 @@ function subline(conversation: ConversationDTO): string {
           class="px-4 py-6 text-sm text-muted-foreground"
         >
           No {{ filter === 'groups' ? 'group chats' : 'direct messages' }} yet.
-        </p>
-        <p
-          v-if="requests.length && filtered.length"
-          class="px-4 pt-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-        >
-          Messages
         </p>
         <ul v-if="filtered.length" class="divide-y divide-border">
           <li v-for="conversation in filtered" :key="conversation.id" class="group relative">
@@ -175,7 +185,7 @@ function subline(conversation: ConversationDTO): string {
               @click="selectConversation(conversation.id)"
             >
               <div class="flex items-center justify-between gap-2">
-                <span class="flex min-w-0 items-center gap-1.5">
+                <span class="flex min-w-0 items-center gap-2">
                   <span class="truncate text-sm font-medium">{{ conversation.displayName }}</span>
                   <span
                     v-if="conversation.hasUnreadMessages"

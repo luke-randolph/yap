@@ -83,7 +83,7 @@ function block() {
       <button
         type="button"
         :disabled="busy === 'block'"
-        class="rounded-md bg-destructive px-4 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        class="rounded-md bg-destructive-solid px-4 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         @click="block"
       >
         Block

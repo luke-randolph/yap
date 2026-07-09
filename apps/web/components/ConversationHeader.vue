@@ -114,7 +114,8 @@ async function saveName() {
           v-for="u in shownDiscs"
           :key="u.id"
           type="button"
-          class="flex rounded-full ring-1 ring-border hover:opacity-80"
+          class="flex rounded-full ring-1 ring-border transition-colors"
+          :class="u.id === auth.user?.id ? 'cursor-default' : 'hover:ring-primary'"
           :title="u.displayName"
           @click="openProfile(u)"
         >
