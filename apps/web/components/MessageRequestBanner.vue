@@ -9,6 +9,7 @@ const friends = useFriendsStore();
 const toasts = useToastsStore();
 
 const busy = ref<string | null>(null);
+const showBlockConfirm = ref(false);
 
 const sender = computed<UserPublicDTO | null>(
   () => props.conversation.participants.find((p) => p.user.id !== auth.user?.id)?.user ?? null,
@@ -42,10 +43,10 @@ function decline() {
   );
 }
 
-function block() {
+async function block() {
   const user = sender.value;
   if (!user) return;
-  return run(
+  await run(
     'block',
     async () => {
       await friends.block(user);
@@ -54,6 +55,7 @@ function block() {
     },
     'Could not block',
   );
+  showBlockConfirm.value = false;
 }
 </script>
 
@@ -84,10 +86,21 @@ function block() {
         type="button"
         :disabled="busy === 'block'"
         class="rounded-md bg-destructive-solid px-4 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-        @click="block"
+        @click="showBlockConfirm = true"
       >
         Block
       </button>
     </div>
+
+    <ConfirmModal
+      v-if="showBlockConfirm"
+      title="Block user?"
+      :message="`${sender?.displayName} won't be able to message you or send you friend requests.`"
+      confirm-label="Block"
+      danger
+      :loading="busy === 'block'"
+      @confirm="block"
+      @cancel="showBlockConfirm = false"
+    />
   </div>
 </template>

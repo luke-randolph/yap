@@ -50,14 +50,30 @@ export const DEMO_DM = {
   ] as DemoMessage[],
 } as const;
 
-// Friendly throwaway names assigned to each guest session.
+export const DEMO_FRIENDS = ['ava@demo.yap', 'sam@demo.yap'] as const;
+export const DEMO_FRIEND_REQUEST_FROM = 'maya@demo.yap';
+export const DEMO_MESSAGE_REQUEST = {
+  from: 'maya@demo.yap',
+  messages: [
+    { from: 'maya@demo.yap', body: 'Hey! We met in Yap Crew — figured I’d say hi over here 👋' },
+    {
+      from: 'maya@demo.yap',
+      body: 'This is a message request. Accept to reply, or decline to remove it.',
+    },
+  ] as DemoMessage[],
+} as const;
+
 export const GUEST_NAMES = [
-  'Curious Otter',
-  'Wandering Fox',
-  'Happy Panda',
-  'Brave Koala',
-  'Clever Heron',
-  'Sunny Robin',
-  'Quiet Lynx',
-  'Bold Falcon',
+  'Jordan',
+  'Riley',
+  'Alex',
+  'Taylor',
+  'Casey',
+  'Morgan',
+  'Jamie',
+  'Quinn',
+  'Avery',
+  'Rowan',
+  'Harper',
+  'Emerson',
 ];

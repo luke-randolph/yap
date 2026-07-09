@@ -12,6 +12,7 @@ const sidebar = useSidebarStore();
 const toasts = useToastsStore();
 
 const busy = ref<string | null>(null);
+const confirming = ref<'remove' | 'block' | 'unblock' | null>(null);
 
 const isSelf = computed(() => props.user.id === auth.user?.id);
 const isFriend = computed(() => friends.isFriend(props.user.id));
@@ -84,8 +85,8 @@ function cancelRequest() {
   return run('cancel', () => friends.decline(req.id), 'Could not cancel request');
 }
 
-function removeFriend() {
-  return run(
+async function removeFriend() {
+  await run(
     'remove',
     async () => {
       await friends.remove(props.user.id);
@@ -93,10 +94,11 @@ function removeFriend() {
     },
     'Could not remove friend',
   );
+  confirming.value = null;
 }
 
-function blockUser() {
-  return run(
+async function blockUser() {
+  await run(
     'block',
     async () => {
       await friends.block(props.user);
@@ -104,10 +106,12 @@ function blockUser() {
     },
     'Could not block',
   );
+  confirming.value = null;
 }
 
-function unblockUser() {
-  return run('unblock', () => friends.unblock(props.user.id), 'Could not unblock');
+async function unblockUser() {
+  await run('unblock', () => friends.unblock(props.user.id), 'Could not unblock');
+  confirming.value = null;
 }
 </script>
 
@@ -152,7 +156,7 @@ function unblockUser() {
             type="button"
             :disabled="busy === 'unblock'"
             class="w-full rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            @click="unblockUser"
+            @click="confirming = 'unblock'"
           >
             Unblock
           </button>
@@ -204,7 +208,7 @@ function unblockUser() {
             type="button"
             :disabled="busy === 'remove'"
             class="flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            @click="removeFriend"
+            @click="confirming = 'remove'"
           >
             <UserMinus class="h-4 w-4" />
             Remove friend
@@ -225,7 +229,7 @@ function unblockUser() {
             type="button"
             :disabled="busy === 'block'"
             class="flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm text-destructive-foreground hover:bg-muted disabled:opacity-50"
-            @click="blockUser"
+            @click="confirming = 'block'"
           >
             <Ban class="h-4 w-4" />
             Block
@@ -233,5 +237,35 @@ function unblockUser() {
         </template>
       </div>
     </div>
+
+    <ConfirmModal
+      v-if="confirming === 'block'"
+      title="Block user?"
+      :message="`${user.displayName} won't be able to message you or send you friend requests.`"
+      confirm-label="Block"
+      danger
+      :loading="busy === 'block'"
+      @confirm="blockUser"
+      @cancel="confirming = null"
+    />
+    <ConfirmModal
+      v-if="confirming === 'unblock'"
+      title="Unblock user?"
+      :message="`${user.displayName} will be able to message you and send you friend requests again.`"
+      confirm-label="Unblock"
+      :loading="busy === 'unblock'"
+      @confirm="unblockUser"
+      @cancel="confirming = null"
+    />
+    <ConfirmModal
+      v-if="confirming === 'remove'"
+      title="Remove friend?"
+      :message="`You'll no longer be friends with ${user.displayName}.`"
+      confirm-label="Remove"
+      danger
+      :loading="busy === 'remove'"
+      @confirm="removeFriend"
+      @cancel="confirming = null"
+    />
   </div>
 </template>

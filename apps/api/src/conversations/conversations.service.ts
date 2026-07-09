@@ -106,10 +106,7 @@ export class ConversationsService {
         createdById: currentUserId,
         requestPending: isRequest,
         participants: {
-          create: [currentUser.id, ...otherIds].map((userId) => ({
-            userId,
-            isAdmin: isGroup && userId === currentUserId,
-          })),
+          create: [currentUser.id, ...otherIds].map((userId) => ({ userId })),
         },
       },
       include: conversationInclude,
@@ -385,7 +382,6 @@ export class ConversationsService {
       joinedAt: p.joinedAt.toISOString(),
       leftAt: p.leftAt?.toISOString() ?? null,
       lastReadMessageId: p.lastReadMessageId,
-      isAdmin: p.isAdmin,
     });
     return {
       active: rows.filter((p) => !p.leftAt).map(toDto),
@@ -561,7 +557,6 @@ export class ConversationsService {
       joinedAt: p.joinedAt.toISOString(),
       leftAt: p.leftAt?.toISOString() ?? null,
       lastReadMessageId: p.lastReadMessageId,
-      isAdmin: p.isAdmin,
     }));
 
     const latestMessage = row.messages[0];
@@ -575,6 +570,7 @@ export class ConversationsService {
       id: row.id,
       isGroup: row.isGroup,
       name: row.name,
+      createdById: row.createdById,
       displayName: computeDisplayName(row, participants, currentUserId),
       participants,
       lastActivityAt: row.lastActivityAt?.toISOString() ?? null,

@@ -10,6 +10,7 @@ const toasts = useToastsStore();
 const tab = ref<'friends' | 'requests' | 'blocked'>('friends');
 const showAdd = ref(false);
 const selectedUser = ref<UserPublicDTO | null>(null);
+const unblockTarget = ref<UserPublicDTO | null>(null);
 const busy = ref<string | null>(null);
 
 onMounted(() => {
@@ -58,6 +59,7 @@ async function unblock(user: UserPublicDTO) {
   } finally {
     busy.value = null;
   }
+  unblockTarget.value = null;
 }
 </script>
 
@@ -243,7 +245,7 @@ async function unblock(user: UserPublicDTO) {
               type="button"
               :disabled="busy === u.id"
               class="shrink-0 rounded-md border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-card hover:text-foreground disabled:opacity-50"
-              @click="unblock(u)"
+              @click="unblockTarget = u"
             >
               Unblock
             </button>
@@ -254,5 +256,14 @@ async function unblock(user: UserPublicDTO) {
 
     <AddFriendModal v-if="showAdd" @close="showAdd = false" />
     <UserProfileModal v-if="selectedUser" :user="selectedUser" @close="selectedUser = null" />
+    <ConfirmModal
+      v-if="unblockTarget"
+      title="Unblock user?"
+      :message="`${unblockTarget.displayName} will be able to message you and send you friend requests again.`"
+      confirm-label="Unblock"
+      :loading="busy === unblockTarget.id"
+      @confirm="unblock(unblockTarget)"
+      @cancel="unblockTarget = null"
+    />
   </div>
 </template>
