@@ -20,6 +20,23 @@ export const userSearchQuerySchema = z.object({
 });
 export type UserSearchQueryInput = z.infer<typeof userSearchQuerySchema>;
 
+export const sendFriendRequestSchema = z.object({
+  email: emailSchema,
+});
+export type SendFriendRequestInput = z.infer<typeof sendFriendRequestSchema>;
+
+export const FRIEND_ERROR_CODES = {
+  cannotFriendSelf: 'CANNOT_FRIEND_SELF',
+  friendRequestExists: 'FRIEND_REQUEST_EXISTS',
+  alreadyFriends: 'ALREADY_FRIENDS',
+  friendshipNotFound: 'FRIENDSHIP_NOT_FOUND',
+} as const;
+
+export const USER_ERROR_CODES = {
+  userNotFound: 'USER_NOT_FOUND',
+  cannotBlockSelf: 'CANNOT_BLOCK_SELF',
+} as const;
+
 export const verifyOtpSchema = z.object({
   email: emailSchema,
   code: z.string().regex(/^\d{6}$/, 'OTP code must be 6 digits'),
@@ -60,6 +77,7 @@ export const CONVERSATION_ERROR_CODES = {
   notGroupConversation: 'NOT_GROUP_CONVERSATION',
   participantsBlocked: 'PARTICIPANTS_BLOCKED',
   notBlocked: 'NOT_BLOCKED',
+  notRequest: 'NOT_REQUEST',
   parentMessageNotFound: 'PARENT_MESSAGE_NOT_FOUND',
   messageNotFound: 'MESSAGE_NOT_FOUND',
   notMessageOwner: 'NOT_MESSAGE_OWNER',

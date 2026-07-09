@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ChevronDown, Pin, RotateCcw, Trash2 } from 'lucide-vue-next';
-import type { ConversationDTO } from '@yap/contracts';
+import type { ConversationDTO, UserPublicDTO } from '@yap/contracts';
 import type { ChatMessage } from '~/stores/messages';
 
 const props = defineProps<{
   conversation: ConversationDTO;
+  readonly?: boolean;
 }>();
 
 const auth = useAuthStore();
@@ -39,6 +40,14 @@ function senderAvatar(senderId: string): string | null {
 
 function isFromCurrentUser(senderId: string): boolean {
   return senderId === auth.user?.id;
+}
+
+const selectedUser = ref<UserPublicDTO | null>(null);
+
+function openSenderProfile(senderId: string) {
+  if (senderId === auth.user?.id) return;
+  const user = senderById.value.get(senderId);
+  if (user) selectedUser.value = user;
 }
 
 function isNotice(m?: ChatMessage): boolean {
@@ -254,13 +263,20 @@ watch(
               :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
             >
               <template v-if="conversation.isGroup && !isFromCurrentUser(m.senderId)">
-                <UserAvatar
+                <button
                   v-if="isLastInMessageRun(i)"
-                  :name="senderName(m.senderId)"
-                  :src="senderAvatar(m.senderId)"
-                  :size="28"
-                  class="self-end ring-1 ring-border"
-                />
+                  type="button"
+                  class="self-end rounded-full hover:opacity-80"
+                  :title="senderName(m.senderId)"
+                  @click="openSenderProfile(m.senderId)"
+                >
+                  <UserAvatar
+                    :name="senderName(m.senderId)"
+                    :src="senderAvatar(m.senderId)"
+                    :size="28"
+                    class="ring-1 ring-border"
+                  />
+                </button>
                 <span v-else class="w-7 shrink-0" aria-hidden="true" />
               </template>
               <div
@@ -383,7 +399,7 @@ watch(
       </button>
     </div>
 
-    <MessageComposer :conversation-id="conversation.id" />
+    <MessageComposer v-if="!readonly" :conversation-id="conversation.id" />
 
     <ConfirmModal
       v-if="pendingDelete"
@@ -395,5 +411,7 @@ watch(
       @confirm="confirmDelete"
       @cancel="pendingDelete = null"
     />
+
+    <UserProfileModal v-if="selectedUser" :user="selectedUser" @close="selectedUser = null" />
   </div>
 </template>

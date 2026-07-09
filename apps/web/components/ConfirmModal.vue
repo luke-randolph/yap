@@ -34,8 +34,8 @@ const emit = defineEmits<{ confirm: []; cancel: [] }>();
         <button
           type="button"
           :disabled="loading"
-          class="rounded-md px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-          :class="danger ? 'bg-destructive' : 'bg-primary'"
+          class="rounded-md px-4 py-2 text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+          :class="danger ? 'bg-destructive-solid text-white' : 'bg-primary text-primary-foreground'"
           @click="emit('confirm')"
         >
           {{ loading ? 'Working…' : confirmLabel }}

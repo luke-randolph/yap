@@ -9,6 +9,21 @@ export interface UserPublicDTO {
   isGuest?: boolean;
 }
 
+export type FriendshipStatus = 'pending' | 'accepted';
+
+export interface FriendRequestDTO {
+  id: string;
+  direction: 'incoming' | 'outgoing';
+  user: UserPublicDTO;
+  createdAt: string;
+}
+
+export interface FriendDTO {
+  friendshipId: string;
+  user: UserPublicDTO;
+  friendsSince: string;
+}
+
 export type AccessStatus = 'pending' | 'approved' | 'denied';
 
 export interface AccessRequestDTO {
@@ -28,6 +43,8 @@ export interface ParticipantDTO {
   isAdmin: boolean;
 }
 
+export type ConversationRequestState = 'none' | 'incoming' | 'outgoing';
+
 export interface ConversationDTO {
   id: string;
   isGroup: boolean;
@@ -38,6 +55,7 @@ export interface ConversationDTO {
   createdAt: string;
   hasUnreadMessages: boolean;
   isStarred: boolean;
+  requestState: ConversationRequestState;
 }
 
 export interface ConversationParticipantsDTO {

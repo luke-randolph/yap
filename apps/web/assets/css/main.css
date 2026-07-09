@@ -15,6 +15,7 @@
   --success-soft: #d1fae5;
   --success-foreground: #064e3b;
   --destructive: #e11d48;
+  --destructive-solid: #e11d48;
   --destructive-soft: #ffe4e6;
   --destructive-foreground: #4c0519;
   --overlay: #2b2640;
@@ -37,6 +38,7 @@
   --success-soft: #022c22;
   --success-foreground: #d1fae5;
   --destructive: #fb7185;
+  --destructive-solid: #be123c;
   --destructive-soft: #4c0519;
   --destructive-foreground: #ffe4e6;
   --overlay: #2b2640;
@@ -59,6 +61,7 @@
   --color-success-soft: var(--success-soft);
   --color-success-foreground: var(--success-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-solid: var(--destructive-solid);
   --color-destructive-soft: var(--destructive-soft);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-overlay: var(--overlay);

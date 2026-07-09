@@ -5,6 +5,7 @@ import type { ConversationDTO } from '@yap/contracts';
 const auth = useAuthStore();
 const conversations = useConversationsStore();
 const messages = useMessagesStore();
+const friends = useFriendsStore();
 const socket = useSocket();
 const sidebar = useSidebarStore();
 
@@ -16,6 +17,7 @@ useRealtimeSync();
 
 onMounted(async () => {
   await conversations.fetchAll();
+  friends.fetchAll().catch(() => undefined);
 });
 
 function onCreated(conversation: ConversationDTO) {
@@ -28,6 +30,7 @@ function resetClient() {
   socket.disconnect();
   conversations.reset();
   messages.reset();
+  friends.reset();
 }
 
 async function handleLogout() {
@@ -48,7 +51,19 @@ async function handleExitDemo() {
     <DemoBanner v-if="auth.user?.isGuest" @exit="handleExitDemo" />
     <header class="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
       <h1 class="flex items-center">
-        <img src="/yap-logo.png" alt="Yap" class="h-7 w-auto" />
+        <button
+          type="button"
+          class="relative rounded-md p-0.5 hover:opacity-80"
+          title="Home"
+          aria-label="Home"
+          @click="conversations.select(null)"
+        >
+          <img src="/yap-logo.png" alt="Yap" class="h-7 w-auto" />
+          <span
+            v-if="friends.incomingCount"
+            class="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary"
+          />
+        </button>
       </h1>
       <div class="flex items-center gap-3">
         <ThemeToggle />
@@ -99,13 +114,25 @@ async function handleExitDemo() {
               <Menu class="h-5 w-5" />
             </button>
           </div>
-          <div class="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            <p>Select a chat or start a new one.</p>
-          </div>
+          <FriendsHome />
         </div>
         <div v-else class="flex min-h-0 flex-1 flex-col">
           <ConversationHeader :conversation="conversations.selected" />
-          <MessageThread :key="conversations.selected.id" :conversation="conversations.selected" />
+          <MessageRequestBanner
+            v-if="conversations.selected.requestState === 'incoming'"
+            :conversation="conversations.selected"
+          />
+          <p
+            v-else-if="conversations.selected.requestState === 'outgoing'"
+            class="border-b border-border bg-accent/40 px-6 py-2 text-center text-xs text-accent-foreground"
+          >
+            Waiting for {{ conversations.selected.displayName }} to accept your message request.
+          </p>
+          <MessageThread
+            :key="conversations.selected.id"
+            :conversation="conversations.selected"
+            :readonly="conversations.selected.requestState === 'incoming'"
+          />
         </div>
       </main>
     </div>
