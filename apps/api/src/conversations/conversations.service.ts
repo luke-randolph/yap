@@ -367,6 +367,71 @@ export class ConversationsService {
     });
   }
 
+  async assertCanSendDm(senderId: string, conversationId: string): Promise<void> {
+    const convo = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { isGroup: true, participants: { select: { userId: true } } },
+    });
+    if (!convo || convo.isGroup) return;
+    const other = convo.participants.find((p) => p.userId !== senderId);
+    if (other && (await this.friends.isBlockedEitherDirection(senderId, other.userId))) {
+      throw new ForbiddenException({
+        error: {
+          code: CONVERSATION_ERROR_CODES.recipientsNotAllowed,
+          message: 'This person is not available.',
+        },
+      });
+    }
+  }
+
+  async blockDms(blockerId: string, blockedId: string): Promise<void> {
+    await this.setDmBlock(blockerId, blockedId, { userId: blockerId, leftAt: null }, new Date());
+  }
+
+  async unblockDms(blockerId: string, blockedId: string): Promise<void> {
+    await this.setDmBlock(
+      blockerId,
+      blockedId,
+      { userId: blockerId, blockedAt: { not: null } },
+      null,
+    );
+  }
+
+  private async setDmBlock(
+    blockerId: string,
+    blockedId: string,
+    match: Prisma.ConversationParticipantWhereInput,
+    blockedAt: Date | null,
+  ): Promise<void> {
+    const dms = await this.prisma.conversation.findMany({
+      where: {
+        isGroup: false,
+        AND: [{ participants: { some: match } }, { participants: { some: { userId: blockedId } } }],
+      },
+      select: { id: true },
+    });
+    if (!dms.length) return;
+    await this.prisma.conversationParticipant.updateMany({
+      where: { conversationId: { in: dms.map((d) => d.id) }, userId: blockerId },
+      data: blockedAt ? { blockedAt, isStarred: false } : { blockedAt: null },
+    });
+    for (const dm of dms) await this.emitConversationUpdated(dm.id, blockerId);
+  }
+
+  private async emitConversationUpdated(
+    conversationId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    const row = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: conversationInclude,
+    });
+    if (!row) return;
+    const { byUserId } = this.perUserDtos(row, actorUserId);
+    const event: ConversationUpdatedEvent = { conversationByUserId: byUserId };
+    this.events.emit(REALTIME_EVENTS.conversationUpdated, event);
+  }
+
   async getParticipants(
     currentUserId: string,
     conversationId: string,
@@ -391,7 +456,10 @@ export class ConversationsService {
 
   async listBlocked(currentUserId: string): Promise<ConversationDTO[]> {
     const rows = await this.prisma.conversation.findMany({
-      where: { participants: { some: { userId: currentUserId, blockedAt: { not: null } } } },
+      where: {
+        isGroup: true,
+        participants: { some: { userId: currentUserId, blockedAt: { not: null } } },
+      },
       include: conversationInclude,
       orderBy: [{ lastActivityAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     });
@@ -577,6 +645,7 @@ export class ConversationsService {
       createdAt: row.createdAt.toISOString(),
       hasUnreadMessages,
       isStarred: currentParticipant?.isStarred ?? false,
+      isBlocked: currentParticipant?.blockedAt != null,
       requestState: row.requestPending
         ? row.createdById === currentUserId
           ? 'outgoing'

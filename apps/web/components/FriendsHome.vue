@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { Check, MessageSquare, Plus } from 'lucide-vue-next';
-import { getApiError, type UserPublicDTO } from '@yap/contracts';
+import { getApiError, type ConversationDTO, type UserPublicDTO } from '@yap/contracts';
 
 const friends = useFriendsStore();
 const conversations = useConversationsStore();
 const sidebar = useSidebarStore();
+const home = useHomeStore();
 const toasts = useToastsStore();
-
-const tab = ref<'friends' | 'requests' | 'blocked'>('friends');
 const showAdd = ref(false);
 const selectedUser = ref<UserPublicDTO | null>(null);
 const unblockTarget = ref<UserPublicDTO | null>(null);
@@ -48,6 +47,24 @@ async function decline(id: string) {
   }
 }
 
+function blockedChatFor(userId: string): ConversationDTO | null {
+  return (
+    conversations.list.find(
+      (c) => c.isBlocked && !c.isGroup && c.participants.some((p) => p.user.id === userId),
+    ) ?? null
+  );
+}
+
+function openBlocked(user: UserPublicDTO) {
+  const convo = blockedChatFor(user.id);
+  if (convo) {
+    conversations.select(convo.id);
+    sidebar.close();
+  } else {
+    selectedUser.value = user;
+  }
+}
+
 async function unblock(user: UserPublicDTO) {
   if (busy.value) return;
   busy.value = user.id;
@@ -81,16 +98,20 @@ async function unblock(user: UserPublicDTO) {
       <button
         type="button"
         class="flex-1 rounded-md px-3 py-1.5"
-        :class="tab === 'friends' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'"
-        @click="tab = 'friends'"
+        :class="
+          home.tab === 'friends' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+        "
+        @click="home.tab = 'friends'"
       >
         Friends ({{ friends.friends.length }})
       </button>
       <button
         type="button"
         class="flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5"
-        :class="tab === 'requests' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'"
-        @click="tab = 'requests'"
+        :class="
+          home.tab === 'requests' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+        "
+        @click="home.tab = 'requests'"
       >
         Requests
         <span
@@ -103,15 +124,17 @@ async function unblock(user: UserPublicDTO) {
       <button
         type="button"
         class="flex-1 rounded-md px-3 py-1.5"
-        :class="tab === 'blocked' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'"
-        @click="tab = 'blocked'"
+        :class="
+          home.tab === 'blocked' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'
+        "
+        @click="home.tab = 'blocked'"
       >
         Blocked
       </button>
     </div>
 
     <div class="mt-3 min-h-0 flex-1 overflow-y-auto">
-      <template v-if="tab === 'friends'">
+      <template v-if="home.tab === 'friends'">
         <p v-if="!friends.friends.length" class="py-8 text-center text-sm text-muted-foreground">
           No friends yet. Tap <span class="font-medium text-foreground">Add</span> to invite someone
           by email.
@@ -147,7 +170,7 @@ async function unblock(user: UserPublicDTO) {
         </ul>
       </template>
 
-      <template v-else-if="tab === 'requests'">
+      <template v-else-if="home.tab === 'requests'">
         <p
           v-if="!friends.incoming.length && !friends.outgoing.length"
           class="py-8 text-center text-sm text-muted-foreground"
@@ -236,11 +259,17 @@ async function unblock(user: UserPublicDTO) {
             :key="u.id"
             class="flex items-center gap-3 rounded-md p-2 hover:bg-accent"
           >
-            <UserAvatar :name="u.displayName" :src="u.avatarUrl" :size="36" />
-            <span class="min-w-0 flex-1">
-              <span class="block truncate text-sm font-medium">{{ u.displayName }}</span>
-              <span class="block truncate text-xs text-muted-foreground">{{ u.email }}</span>
-            </span>
+            <button
+              type="button"
+              class="flex min-w-0 flex-1 items-center gap-3 text-left"
+              @click="openBlocked(u)"
+            >
+              <UserAvatar :name="u.displayName" :src="u.avatarUrl" :size="36" />
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm font-medium">{{ u.displayName }}</span>
+                <span class="block truncate text-xs text-muted-foreground">{{ u.email }}</span>
+              </span>
+            </button>
             <button
               type="button"
               :disabled="busy === u.id"

@@ -27,12 +27,14 @@ const filter = ref<ConversationFilter>('all');
 const requestsOpen = ref(false);
 
 const requests = computed(() => props.conversations.filter((c) => c.requestState === 'incoming'));
-const accepted = computed(() => props.conversations.filter((c) => c.requestState !== 'incoming'));
+const active = computed(() =>
+  props.conversations.filter((c) => c.requestState !== 'incoming' && !c.isBlocked),
+);
 
 const filtered = computed(() => {
-  if (filter.value === 'groups') return accepted.value.filter((c) => c.isGroup);
-  if (filter.value === 'dms') return accepted.value.filter((c) => !c.isGroup);
-  return accepted.value;
+  if (filter.value === 'groups') return active.value.filter((c) => c.isGroup);
+  if (filter.value === 'dms') return active.value.filter((c) => !c.isGroup);
+  return active.value;
 });
 
 function selectConversation(id: string) {
@@ -162,13 +164,13 @@ function subline(conversation: ConversationDTO): string {
       </p>
       <template v-else>
         <p
-          v-if="!requests.length && accepted.length === 0"
+          v-if="!requests.length && active.length === 0"
           class="px-4 py-6 text-sm text-muted-foreground"
         >
           No chats yet. Tap <span class="font-medium text-foreground">+</span> to start one.
         </p>
         <p
-          v-else-if="accepted.length > 0 && filtered.length === 0"
+          v-else-if="active.length > 0 && filtered.length === 0"
           class="px-4 py-6 text-sm text-muted-foreground"
         >
           No {{ filter === 'groups' ? 'group chats' : 'direct messages' }} yet.

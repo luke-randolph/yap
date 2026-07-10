@@ -154,6 +154,7 @@ export class MessagesService {
         },
       });
     }
+    await this.conversations.assertCanSendDm(senderId, conversationId);
 
     if (input.parentMessageId) {
       const parent = await this.prisma.message.findFirst({
