@@ -128,10 +128,16 @@ async function handleExitDemo() {
           >
             Waiting for {{ conversations.selected.displayName }} to accept your message request.
           </p>
+          <BlockedConversationBanner
+            v-else-if="conversations.selected.isBlocked"
+            :conversation="conversations.selected"
+          />
           <MessageThread
             :key="conversations.selected.id"
             :conversation="conversations.selected"
-            :readonly="conversations.selected.requestState === 'incoming'"
+            :readonly="
+              conversations.selected.requestState === 'incoming' || conversations.selected.isBlocked
+            "
           />
         </div>
       </main>

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { AVATAR, USER_ERROR_CODES, type UserPublicDTO } from '@yap/contracts';
 import sharp from 'sharp';
+import { ConversationsService } from '../conversations/conversations.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { STORAGE, type StorageAdapter } from '../storage/storage.interface';
 import { userPublicSelect } from './user.selects';
@@ -12,6 +13,7 @@ const USER_SEARCH_LIMIT = 10;
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly conversations: ConversationsService,
     @Inject(STORAGE) private readonly storage: StorageAdapter,
   ) {}
 
@@ -138,12 +140,14 @@ export class UsersService {
         },
       }),
     ]);
+    await this.conversations.blockDms(currentUserId, targetId);
   }
 
   async unblockUser(currentUserId: string, targetId: string): Promise<void> {
     await this.prisma.block.deleteMany({
       where: { blockerId: currentUserId, blockedId: targetId },
     });
+    await this.conversations.unblockDms(currentUserId, targetId);
   }
 
   async listBlocked(currentUserId: string): Promise<UserPublicDTO[]> {

@@ -55,6 +55,7 @@ export interface ConversationDTO {
   createdAt: string;
   hasUnreadMessages: boolean;
   isStarred: boolean;
+  isBlocked: boolean;
   requestState: ConversationRequestState;
 }
 
