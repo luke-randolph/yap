@@ -8,17 +8,20 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { ConversationsModule } from './conversations/conversations.module';
+import { validateEnv } from './config/env.validation';
 import { FriendsModule } from './friends/friends.module';
+import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
     PrismaModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     FriendsModule,

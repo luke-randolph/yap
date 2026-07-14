@@ -62,6 +62,9 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
+      helmet:
+        specifier: ^8.2.0
+        version: 8.2.0
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -138,6 +141,9 @@ importers:
       prisma:
         specifier: ^6.0.0
         version: 6.19.3(typescript@5.9.3)
+      socket.io-client:
+        specifier: ^4.8.3
+        version: 4.8.3
       source-map-support:
         specifier: ^0.5.21
         version: 0.5.21
@@ -4904,6 +4910,10 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
+  helmet@8.2.0:
+    resolution: {integrity: sha512-DRgTIUgnWcJ62KyarxxziuqYxKGnR6Rgg19BlbucN/dpmJbl1XOit6qvoOX0ZT+HhWe5OUVhU/a1zpGyc1xA0Q==}
+    engines: {node: '>=18.0.0'}
+
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
 
@@ -7519,18 +7529,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  ws@8.20.0:
-    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
-    engines: {node: '>=10.0.0'}
-    peerDependencies:
-      bufferutil: ^4.0.1
-      utf-8-validate: '>=5.0.2'
-    peerDependenciesMeta:
-      bufferutil:
-        optional: true
-      utf-8-validate:
-        optional: true
-
   ws@8.20.1:
     resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
     engines: {node: '>=10.0.0'}
@@ -9257,7 +9255,7 @@ snapshots:
       vite-plugin-inspect: 11.3.3(@nuxt/kit@4.4.4(magicast@0.5.2))(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(yaml@2.8.4))
       vite-plugin-vue-tracer: 1.3.0(vite@7.3.2(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.2)(yaml@2.8.4))(vue@3.5.33(typescript@5.9.3))
       which: 6.0.1
-      ws: 8.20.0
+      ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -12615,6 +12613,8 @@ snapshots:
 
   he@1.2.0: {}
 
+  helmet@8.2.0: {}
+
   hookable@5.5.3: {}
 
   hookable@6.1.1: {}
@@ -15677,8 +15677,6 @@ snapshots:
       signal-exit: 4.1.0
 
   ws@8.18.3: {}
-
-  ws@8.20.0: {}
 
   ws@8.20.1: {}
 
