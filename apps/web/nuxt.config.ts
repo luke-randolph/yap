@@ -26,6 +26,9 @@ export default defineNuxtConfig({
     fallback: 'light',
     classSuffix: '',
   },
+  routeRules: {
+    '/': { ssr: false },
+  },
   runtimeConfig: {
     public: {
       apiBase: 'http://localhost:3333',
