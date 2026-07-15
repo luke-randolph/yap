@@ -12,20 +12,17 @@ function requireEnv(name: string): string {
 const ADMIN_EMAIL = requireEnv('ADMIN_EMAIL');
 
 async function main() {
-  // The sole admin / real account.
   await prisma.user.upsert({
     where: { email: ADMIN_EMAIL },
     update: { isAdmin: true, kind: 'member' },
     create: { email: ADMIN_EMAIL, displayName: 'Luke', isAdmin: true, kind: 'member' },
   });
-  // Allowlist the admin so the signup guard always lets them in.
   await prisma.accessRequest.upsert({
     where: { email: ADMIN_EMAIL },
     update: { status: 'approved' },
     create: { email: ADMIN_EMAIL, displayName: 'Luke', status: 'approved' },
   });
 
-  // Fake characters every demo guest can chat with.
   for (const c of DEMO_CHARACTERS) {
     await prisma.user.upsert({
       where: { email: c.email },
