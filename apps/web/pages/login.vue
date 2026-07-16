@@ -123,7 +123,7 @@ function extractMessage(e: unknown): string | null {
 </script>
 
 <template>
-  <div class="grid min-h-screen place-items-center px-6">
+  <div class="grid min-h-dvh place-items-center px-6">
     <div class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-sm">
       <img src="/yap-logo.png" alt="Yap" class="mb-5 h-9 w-auto mx-auto" />
       <h1 class="text-xl font-semibold tracking-tight">{{ heading }}</h1>
