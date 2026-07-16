@@ -33,21 +33,25 @@ function resetClient() {
   friends.reset();
 }
 
+// These clear the session synchronously; navigating without awaiting the server call
+// keeps this page from painting in a signed-out state.
 async function handleLogout() {
-  resetClient();
-  await auth.logout();
+  const loggedOut = auth.logout();
   await navigateTo('/login');
+  resetClient();
+  await loggedOut;
 }
 
 async function handleExitDemo() {
-  resetClient();
-  await auth.exitDemo();
+  const exited = auth.exitDemo();
   await navigateTo('/login');
+  resetClient();
+  await exited;
 }
 </script>
 
 <template>
-  <div class="flex h-screen flex-col">
+  <div class="flex h-dvh flex-col">
     <DemoBanner v-if="auth.user?.isGuest" @exit="handleExitDemo" />
     <header class="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
       <h1 class="flex items-center">
@@ -152,14 +156,8 @@ async function handleExitDemo() {
     <ProfileModal
       v-if="showProfile"
       @close="showProfile = false"
-      @logout="
-        showProfile = false;
-        handleLogout();
-      "
-      @exit-demo="
-        showProfile = false;
-        handleExitDemo();
-      "
+      @logout="handleLogout"
+      @exit-demo="handleExitDemo"
     />
 
     <AdminPanel v-if="showAdmin && auth.user?.isAdmin" @close="showAdmin = false" />

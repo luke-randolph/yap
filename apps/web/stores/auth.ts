@@ -16,15 +16,25 @@ export const useAuthStore = defineStore('auth', () => {
   const needsDisplayName = computed(() => isAuthenticated.value && !HAS_NAME(user.value));
 
   let refreshing: Promise<boolean> | null = null;
+  let sessionCheck: Promise<boolean> | null = null;
 
   function setSession(payload: AuthTokenResponse) {
+    sessionCheck = Promise.resolve(true);
     accessToken.value = payload.accessToken;
     user.value = payload.user;
   }
 
   function clearSession() {
+    sessionCheck = Promise.resolve(false);
     accessToken.value = null;
     user.value = null;
+  }
+
+  // For route guards; reuses the previous result. refresh() always re-probes.
+  function ensureSession(): Promise<boolean> {
+    if (isAuthenticated.value) return Promise.resolve(true);
+    sessionCheck ??= refresh();
+    return sessionCheck;
   }
 
   async function authFetch<T>(
@@ -110,22 +120,17 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout(): Promise<void> {
-    try {
-      await authFetch('/auth/logout', { method: 'POST' });
-    } catch {
-      // best-effort: still clear local state if server call fails
-    }
+    const request = authFetch('/auth/logout', { method: 'POST' });
     clearSession();
+    await request.catch(() => undefined);
   }
 
   async function exitDemo(): Promise<void> {
     const api = useApi();
-    try {
-      await api('/auth/demo/exit', { method: 'POST' });
-    } catch {
-      // best-effort: still clear local state if the cleanup call fails
-    }
+    // Must start before clearSession(): the request authenticates with the current token.
+    const request = api('/auth/demo/exit', { method: 'POST' });
     clearSession();
+    await request.catch(() => undefined);
   }
 
   return {
@@ -135,6 +140,7 @@ export const useAuthStore = defineStore('auth', () => {
     needsDisplayName,
     setSession,
     clearSession,
+    ensureSession,
     requestOtp,
     demoLogin,
     requestAccess,

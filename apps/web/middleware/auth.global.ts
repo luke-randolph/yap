@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const auth = useAuthStore();
 
   if (!auth.isAuthenticated) {
-    await auth.refresh();
+    await auth.ensureSession();
   }
 
   const isPublic = PUBLIC_ROUTES.has(to.path);
