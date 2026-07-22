@@ -97,6 +97,20 @@ export interface MessageReactionDTO {
   createdAt: string;
 }
 
+export interface GifDTO {
+  id: string;
+  description: string;
+  previewUrl: string;
+  width: number | null;
+  height: number | null;
+}
+
+export interface GifSearchResponseDTO {
+  results: GifDTO[];
+  /** Opaque cursor for the next page, echoed back as the `pos` query param; null when there are no more pages. */
+  next: string | null;
+}
+
 export interface AuthTokenResponse {
   accessToken: string;
   expiresIn: number;

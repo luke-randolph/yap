@@ -124,6 +124,20 @@ export const socketSendMessageSchema = sendMessageSchema.extend({
 });
 export type SocketSendMessageInput = z.infer<typeof socketSendMessageSchema>;
 
+export const gifSearchQuerySchema = z.object({
+  q: z.string().trim().max(50).optional(),
+  pos: z.string().trim().max(100).optional(),
+});
+export type GifSearchQueryInput = z.infer<typeof gifSearchQuerySchema>;
+
+export const sendGifMessageSchema = z.object({
+  gifId: z.string().trim().min(1).max(100),
+  body: z.string().trim().max(VALIDATION_LIMITS.maxMessageBodyLength).optional(),
+  parentMessageId: z.string().cuid().optional(),
+  clientMessageId: z.string().uuid(),
+});
+export type SendGifMessageInput = z.infer<typeof sendGifMessageSchema>;
+
 export const reactMessageSchema = z.object({
   emoji: z.string().trim().min(1).max(VALIDATION_LIMITS.maxReactionEmojiLength),
 });

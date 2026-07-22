@@ -63,10 +63,6 @@ async function handleExitDemo() {
           @click="conversations.select(null)"
         >
           <img src="/yap-logo.png" alt="Yap" class="h-7 w-auto" />
-          <span
-            v-if="friends.incomingCount"
-            class="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary"
-          />
         </button>
       </h1>
       <div class="flex items-center gap-3">

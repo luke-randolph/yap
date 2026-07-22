@@ -21,3 +21,10 @@ export const MESSAGE_IMAGE = {
   allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
   maxDimension: 1600, // longest edge (px) after processing
 } as const;
+
+export const GIPHY = {
+  resultsPerPage: 24,
+  previewFormat: 'fixed_width_small', // rendition shown in the picker grid
+  fullFormat: 'downsized_medium', // rendition saved in a sent message
+  rating: 'r', // 'g' | 'pg' | 'pg-13' | 'r'; 'r' is the most permissive
+} as const;

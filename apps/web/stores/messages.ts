@@ -24,7 +24,23 @@ type PendingSend =
       body: string;
       parentMessageId: string | null;
       previewUrl: string;
+    }
+  | {
+      kind: 'gif';
+      conversationId: string;
+      gifId: string;
+      body: string;
+      parentMessageId: string | null;
     };
+
+// A GIF chosen from the picker: its provider id plus the proxied preview used for
+// optimistic display until the server resolves the full rendition.
+export interface GifSelection {
+  gifId: string;
+  previewUrl: string;
+  width: number | null;
+  height: number | null;
+}
 
 export const useMessagesStore = defineStore('messages', () => {
   const pending = new Map<string, PendingSend>();
@@ -260,12 +276,80 @@ export const useMessagesStore = defineStore('messages', () => {
     }
   }
 
+  async function sendGif(
+    conversationId: string,
+    gif: GifSelection,
+    body: string,
+    parentMessageId: string | null = null,
+  ): Promise<void> {
+    const auth = useAuthStore();
+    const clientMessageId = crypto.randomUUID();
+    const optimistic: ChatMessage = {
+      id: `temp-${clientMessageId}`,
+      conversationId,
+      senderId: auth.user?.id ?? '',
+      type: 'user',
+      body: body || null,
+      parentMessageId,
+      attachments: [
+        {
+          id: `temp-att-${clientMessageId}`,
+          url: gif.previewUrl,
+          mimeType: 'image/gif',
+          width: gif.width,
+          height: gif.height,
+          sizeBytes: 0,
+        },
+      ],
+      reactions: [],
+      createdAt: new Date().toISOString(),
+      editedAt: null,
+      deletedAt: null,
+      pinnedAt: null,
+      clientMessageId,
+      status: 'sending',
+    };
+    upsert(conversationId, optimistic);
+    pending.set(clientMessageId, {
+      kind: 'gif',
+      conversationId,
+      gifId: gif.gifId,
+      body,
+      parentMessageId,
+    });
+    await attemptGif(clientMessageId);
+  }
+
+  async function attemptGif(clientMessageId: string): Promise<void> {
+    const p = pending.get(clientMessageId);
+    if (!p || p.kind !== 'gif') return;
+    const { conversationId, gifId, body, parentMessageId } = p;
+
+    try {
+      const api = useApi();
+      const msg = await api<MessageDTO>(`/conversations/${conversationId}/messages/gif`, {
+        method: 'POST',
+        body: {
+          gifId,
+          body: body || undefined,
+          parentMessageId: parentMessageId ?? undefined,
+          clientMessageId,
+        },
+      });
+      pending.delete(clientMessageId);
+      upsert(conversationId, { ...msg, clientMessageId, status: 'sent' });
+    } catch {
+      setStatus(conversationId, clientMessageId, 'failed');
+    }
+  }
+
   async function retrySend(conversationId: string, clientMessageId: string): Promise<void> {
     const p = pending.get(clientMessageId);
     if (!p) return;
     setStatus(conversationId, clientMessageId, 'sending');
     if (p.kind === 'text') await attemptText(clientMessageId);
-    else await attemptImage(clientMessageId);
+    else if (p.kind === 'image') await attemptImage(clientMessageId);
+    else await attemptGif(clientMessageId);
   }
 
   function discardFailed(conversationId: string, clientMessageId: string): void {
@@ -457,6 +541,7 @@ export const useMessagesStore = defineStore('messages', () => {
     loadOlder,
     send,
     sendImage,
+    sendGif,
     retrySend,
     discardFailed,
     react,
