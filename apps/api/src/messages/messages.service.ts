@@ -7,11 +7,13 @@ import {
   MESSAGE_IMAGE,
   type MessageDTO,
   type MessagesQueryInput,
+  type SendGifMessageInput,
   type SendImageMessageInput,
   type SendMessageInput,
 } from '@yap/contracts';
 import sharp from 'sharp';
 import { ConversationsService } from '../conversations/conversations.service';
+import { GifsService } from '../gifs/gifs.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { STORAGE, type StorageAdapter } from '../storage/storage.interface';
 import {
@@ -42,6 +44,7 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter2,
     private readonly conversations: ConversationsService,
+    private readonly gifs: GifsService,
     @Inject(STORAGE) private readonly storage: StorageAdapter,
   ) {}
 
@@ -117,6 +120,31 @@ export class MessagesService {
       width: info.width,
       height: info.height,
       sizeBytes: info.size,
+    };
+    return this.persistMessage(
+      senderId,
+      conversationId,
+      {
+        body: input.body || null,
+        parentMessageId: input.parentMessageId,
+        clientMessageId: input.clientMessageId,
+      },
+      [attachment],
+    );
+  }
+
+  async createGifMessage(
+    senderId: string,
+    conversationId: string,
+    input: SendGifMessageInput,
+  ): Promise<MessageDTO> {
+    const gif = await this.gifs.resolveForSend(input.gifId);
+    const attachment: AttachmentData = {
+      url: gif.url,
+      mimeType: gif.mimeType,
+      width: gif.width,
+      height: gif.height,
+      sizeBytes: gif.sizeBytes,
     };
     return this.persistMessage(
       senderId,

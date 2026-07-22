@@ -25,6 +25,9 @@ const baseSchema = z.object({
   R2_PUBLIC_URL: z.string().url().optional(),
 
   SENTRY_DSN: z.string().url().optional(),
+
+  GIPHY_API_KEY: z.string().optional(),
+  GIF_PROXY_SECRET: z.string().optional(),
 });
 
 const envSchema = baseSchema

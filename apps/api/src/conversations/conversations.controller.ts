@@ -23,6 +23,7 @@ import {
   type MessageDTO,
   type MessagesQueryInput,
   type ReactMessageInput,
+  type SendGifMessageInput,
   type SendImageMessageInput,
   type SendMessageInput,
   type UpdateConversationInput,
@@ -30,6 +31,7 @@ import {
   createConversationSchema,
   messagesQuerySchema,
   reactMessageSchema,
+  sendGifMessageSchema,
   sendImageMessageSchema,
   sendMessageSchema,
   updateConversationSchema,
@@ -199,6 +201,15 @@ export class ConversationsController {
   ): Promise<MessageDTO> {
     if (!file) throw new BadRequestException('No image uploaded');
     return this.messages.createImageMessage(current.sub, conversationId, body, file);
+  }
+
+  @Post(':conversationId/messages/gif')
+  async sendGifMessage(
+    @CurrentUser() current: AccessTokenPayload,
+    @Param('conversationId') conversationId: string,
+    @Body(new ZodValidationPipe(sendGifMessageSchema)) body: SendGifMessageInput,
+  ): Promise<MessageDTO> {
+    return this.messages.createGifMessage(current.sub, conversationId, body);
   }
 
   @Get(':conversationId/messages/pinned')

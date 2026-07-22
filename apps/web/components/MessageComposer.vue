@@ -3,6 +3,7 @@ import { ImagePlus, Reply, SendHorizontal, Smile, X } from 'lucide-vue-next';
 import { onClickOutside, onKeyStroke } from '@vueuse/core';
 import type { EmojiClickEventDetail } from 'vuemoji-picker';
 import { MESSAGE_IMAGE, VALIDATION_LIMITS } from '@yap/contracts';
+import type { GifSelection } from '~/stores/messages';
 
 const props = defineProps<{
   conversationId: string;
@@ -38,14 +39,40 @@ const EmojiPicker = defineAsyncComponent(() =>
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const emojiRoot = ref<HTMLElement | null>(null);
 const emojiOpen = ref(false);
+const gifRoot = ref<HTMLElement | null>(null);
+const gifOpen = ref(false);
 
 onClickOutside(emojiRoot, () => {
   emojiOpen.value = false;
 });
 
+onClickOutside(gifRoot, () => {
+  gifOpen.value = false;
+});
+
 onKeyStroke('Escape', () => {
   if (emojiOpen.value) emojiOpen.value = false;
+  if (gifOpen.value) gifOpen.value = false;
 });
+
+function toggleEmoji() {
+  gifOpen.value = false;
+  emojiOpen.value = !emojiOpen.value;
+}
+
+function toggleGif() {
+  emojiOpen.value = false;
+  gifOpen.value = !gifOpen.value;
+}
+
+function onGifSelect(gif: GifSelection) {
+  const body = draft.value.trim();
+  const parentMessageId = messages.replyTarget?.id ?? null;
+  draft.value = '';
+  messages.clearReplyTarget();
+  gifOpen.value = false;
+  void messages.sendGif(props.conversationId, gif, body, parentMessageId);
+}
 
 function insertEmoji(detail: EmojiClickEventDetail) {
   const char = detail.unicode;
@@ -172,7 +199,7 @@ async function send() {
           type="button"
           class="flex items-center justify-center rounded-md text-muted-foreground transition-colors p-3 border border-border hover:bg-muted hover:text-foreground"
           title="Emoji"
-          @click="emojiOpen = !emojiOpen"
+          @click="toggleEmoji"
         >
           <Smile class="h-4 w-4" />
         </button>
@@ -192,6 +219,23 @@ async function send() {
             </button>
           </div>
           <EmojiPicker :is-dark="isDark" :picker-style="pickerStyle" @emoji-click="insertEmoji" />
+        </div>
+      </div>
+      <div ref="gifRoot" class="relative self-center">
+        <button
+          type="button"
+          class="flex h-10 items-center justify-center rounded-md border border-border px-3 text-sm font-bold leading-none text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="GIF"
+          @click="toggleGif"
+        >
+          GIF
+        </button>
+
+        <div
+          v-if="gifOpen"
+          class="absolute bottom-full left-0 z-10 mb-2 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+        >
+          <GifPicker @select="onGifSelect" @close="gifOpen = false" />
         </div>
       </div>
       <button

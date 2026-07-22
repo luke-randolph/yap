@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { validateEnv } from './config/env.validation';
 import { FriendsModule } from './friends/friends.module';
+import { GifsModule } from './gifs/gifs.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -25,6 +26,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     UsersModule,
     FriendsModule,
+    GifsModule,
     ConversationsModule,
     RealtimeModule,
     AdminModule,
