@@ -345,7 +345,7 @@ watch(
                   :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
                 >
                   <div
-                    class="min-w-0 max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]"
+                    class="relative min-w-0 max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]"
                     :class="[
                       isFromCurrentUser(m.senderId)
                         ? 'rounded-br-none bg-primary text-primary-foreground'
@@ -395,6 +395,14 @@ watch(
                       :class="m.body ? 'mb-1' : ''"
                     />
                     <p v-if="m.body" class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
+                    <span
+                      v-if="m.pinnedAt"
+                      class="absolute -top-1.5 rounded-full bg-background p-0.5 shadow-sm"
+                      :class="isFromCurrentUser(m.senderId) ? '-right-1.5' : '-left-1.5'"
+                      aria-label="Pinned"
+                    >
+                      <Pin class="h-3 w-3 fill-current text-primary" />
+                    </span>
                   </div>
                   <MessageActions
                     class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:hidden"
@@ -427,10 +435,6 @@ watch(
                   class="px-1 text-xs text-muted-foreground"
                   :class="messages.replyTarget?.id === m.id ? 'mt-2' : 'mt-0.5'"
                 >
-                  <Pin
-                    v-if="m.pinnedAt"
-                    class="mr-0.5 inline h-3 w-3 -translate-y-px fill-current text-primary"
-                  />
                   {{ formatTime(m.createdAt) }}
                   <template v-if="m.status === 'sending'"> · Sending…</template>
                   <template v-else-if="m.status === 'failed'">
