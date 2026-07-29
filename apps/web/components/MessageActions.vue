@@ -22,40 +22,23 @@ defineEmits<{ reply: []; react: [emoji: string]; pin: []; copy: []; delete: [] }
 <template>
   <div class="flex items-center gap-1">
     <ReactionPicker :align="align" @select="$emit('react', $event)" />
-    <button
-      type="button"
-      class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-      title="Reply"
-      @click="$emit('reply')"
-    >
+    <IconButton label="Reply" @click="$emit('reply')">
       <Reply class="h-4 w-4" />
-    </button>
-    <button
-      type="button"
-      class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-      :title="pinned ? 'Unpin' : 'Pin'"
-      @click="$emit('pin')"
-    >
+    </IconButton>
+    <IconButton :label="pinned ? 'Unpin' : 'Pin'" @click="$emit('pin')">
       <PinOff v-if="pinned" class="h-4 w-4" />
       <Pin v-else class="h-4 w-4" />
-    </button>
-    <button
-      v-if="canCopy"
-      type="button"
-      class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-      title="Copy text"
-      @click="$emit('copy')"
-    >
+    </IconButton>
+    <IconButton v-if="canCopy" label="Copy text" @click="$emit('copy')">
       <Copy class="h-4 w-4" />
-    </button>
-    <button
+    </IconButton>
+    <IconButton
       v-if="canDelete"
-      type="button"
-      class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-      title="Unsend"
+      label="Unsend"
+      tone="destructive-on-hover"
       @click="$emit('delete')"
     >
       <Trash2 class="h-4 w-4" />
-    </button>
+    </IconButton>
   </div>
 </template>

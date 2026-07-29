@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, Check, MessageSquare, UserMinus, UserPlus, X } from 'lucide-vue-next';
+import { Ban, Check, MessageSquare, UserMinus, UserPlus } from 'lucide-vue-next';
 import { getApiError, type UserPublicDTO } from '@yap/contracts';
 
 const props = defineProps<{ user: UserPublicDTO }>();
@@ -116,156 +116,139 @@ async function unblockUser() {
 </script>
 
 <template>
-  <div
-    class="fixed inset-0 z-[60] flex items-center justify-center bg-overlay/55 backdrop-blur-sm"
-    @click.self="emit('close')"
-  >
-    <div class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg">
-      <div class="flex items-start justify-between">
-        <h2 class="text-lg font-semibold tracking-tight">Profile</h2>
-        <button
-          type="button"
-          class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Close"
-          @click="emit('close')"
-        >
-          <X class="h-4 w-4" />
-        </button>
+  <BaseOverlay title="Profile" @close="emit('close')">
+    <div class="mt-5 flex flex-col items-center gap-3 text-center">
+      <UserAvatar :name="user.displayName" :src="user.avatarUrl" :size="96" />
+      <div>
+        <p class="text-base font-semibold">{{ user.displayName }}</p>
+        <p class="text-sm text-muted-foreground">{{ user.email }}</p>
       </div>
-
-      <div class="mt-5 flex flex-col items-center gap-3 text-center">
-        <UserAvatar :name="user.displayName" :src="user.avatarUrl" :size="96" />
-        <div>
-          <p class="text-base font-semibold">{{ user.displayName }}</p>
-          <p class="text-sm text-muted-foreground">{{ user.email }}</p>
-        </div>
-        <span
-          v-if="isFriend"
-          class="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground"
-        >
-          <Check class="h-3 w-3" /> Friends
-        </span>
-      </div>
-
-      <div v-if="!isSelf" class="mt-6 space-y-2">
-        <template v-if="isBlocked">
-          <p class="text-center text-sm text-muted-foreground">
-            You've blocked {{ user.displayName }}. They can't message you or send requests.
-          </p>
-          <button
-            type="button"
-            :disabled="busy === 'unblock'"
-            class="w-full rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            @click="confirming = 'unblock'"
-          >
-            Unblock
-          </button>
-        </template>
-
-        <template v-else>
-          <button
-            type="button"
-            :disabled="busy === 'message'"
-            class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-            @click="message"
-          >
-            <MessageSquare class="h-4 w-4" />
-            Message
-          </button>
-
-          <div v-if="incomingReq" class="flex gap-2">
-            <button
-              type="button"
-              :disabled="busy === 'accept'"
-              class="flex flex-1 items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
-              @click="acceptRequest"
-            >
-              <Check class="h-4 w-4" />
-              Accept request
-            </button>
-            <button
-              type="button"
-              :disabled="busy === 'decline'"
-              class="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-              @click="declineRequest"
-            >
-              Decline
-            </button>
-          </div>
-
-          <button
-            v-else-if="outgoingReq"
-            type="button"
-            :disabled="busy === 'cancel'"
-            class="w-full rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            @click="cancelRequest"
-          >
-            Cancel request
-          </button>
-
-          <button
-            v-else-if="isFriend"
-            type="button"
-            :disabled="busy === 'remove'"
-            class="flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
-            @click="confirming = 'remove'"
-          >
-            <UserMinus class="h-4 w-4" />
-            Remove friend
-          </button>
-
-          <button
-            v-else
-            type="button"
-            :disabled="busy === 'add'"
-            class="flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
-            @click="addFriend"
-          >
-            <UserPlus class="h-4 w-4" />
-            Add friend
-          </button>
-
-          <button
-            type="button"
-            :disabled="busy === 'block'"
-            class="flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm text-destructive-foreground hover:bg-muted disabled:opacity-50"
-            @click="confirming = 'block'"
-          >
-            <Ban class="h-4 w-4" />
-            Block
-          </button>
-        </template>
-      </div>
+      <span
+        v-if="isFriend"
+        class="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground"
+      >
+        <Check class="h-3 w-3" /> Friends
+      </span>
     </div>
 
-    <ConfirmModal
-      v-if="confirming === 'block'"
-      title="Block user?"
-      :message="`${user.displayName} won't be able to message you or send you friend requests.`"
-      confirm-label="Block"
-      danger
-      :loading="busy === 'block'"
-      @confirm="blockUser"
-      @cancel="confirming = null"
-    />
-    <ConfirmModal
-      v-if="confirming === 'unblock'"
-      title="Unblock user?"
-      :message="`${user.displayName} will be able to message you and send you friend requests again.`"
-      confirm-label="Unblock"
-      :loading="busy === 'unblock'"
-      @confirm="unblockUser"
-      @cancel="confirming = null"
-    />
-    <ConfirmModal
-      v-if="confirming === 'remove'"
-      title="Remove friend?"
-      :message="`You'll no longer be friends with ${user.displayName}.`"
-      confirm-label="Remove"
-      danger
-      :loading="busy === 'remove'"
-      @confirm="removeFriend"
-      @cancel="confirming = null"
-    />
-  </div>
+    <div v-if="!isSelf" class="mt-6 space-y-2">
+      <template v-if="isBlocked">
+        <p class="text-center text-sm text-muted-foreground">
+          You've blocked {{ user.displayName }}. They can't message you or send requests.
+        </p>
+        <button
+          type="button"
+          :disabled="busy === 'unblock'"
+          class="w-full rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+          @click="confirming = 'unblock'"
+        >
+          Unblock
+        </button>
+      </template>
+
+      <template v-else>
+        <button
+          type="button"
+          :disabled="busy === 'message'"
+          class="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          @click="message"
+        >
+          <MessageSquare class="h-4 w-4" />
+          Message
+        </button>
+
+        <div v-if="incomingReq" class="flex gap-2">
+          <button
+            type="button"
+            :disabled="busy === 'accept'"
+            class="flex flex-1 items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+            @click="acceptRequest"
+          >
+            <Check class="h-4 w-4" />
+            Accept request
+          </button>
+          <button
+            type="button"
+            :disabled="busy === 'decline'"
+            class="rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            @click="declineRequest"
+          >
+            Decline
+          </button>
+        </div>
+
+        <button
+          v-else-if="outgoingReq"
+          type="button"
+          :disabled="busy === 'cancel'"
+          class="w-full rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+          @click="cancelRequest"
+        >
+          Cancel request
+        </button>
+
+        <button
+          v-else-if="isFriend"
+          type="button"
+          :disabled="busy === 'remove'"
+          class="flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+          @click="confirming = 'remove'"
+        >
+          <UserMinus class="h-4 w-4" />
+          Remove friend
+        </button>
+
+        <button
+          v-else
+          type="button"
+          :disabled="busy === 'add'"
+          class="flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm hover:bg-muted disabled:opacity-50"
+          @click="addFriend"
+        >
+          <UserPlus class="h-4 w-4" />
+          Add friend
+        </button>
+
+        <button
+          type="button"
+          :disabled="busy === 'block'"
+          class="flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm text-destructive-foreground hover:bg-muted disabled:opacity-50"
+          @click="confirming = 'block'"
+        >
+          <Ban class="h-4 w-4" />
+          Block
+        </button>
+      </template>
+    </div>
+  </BaseOverlay>
+
+  <ConfirmModal
+    v-if="confirming === 'block'"
+    title="Block user?"
+    :message="`${user.displayName} won't be able to message you or send you friend requests.`"
+    confirm-label="Block"
+    danger
+    :loading="busy === 'block'"
+    @confirm="blockUser"
+    @cancel="confirming = null"
+  />
+  <ConfirmModal
+    v-if="confirming === 'unblock'"
+    title="Unblock user?"
+    :message="`${user.displayName} will be able to message you and send you friend requests again.`"
+    confirm-label="Unblock"
+    :loading="busy === 'unblock'"
+    @confirm="unblockUser"
+    @cancel="confirming = null"
+  />
+  <ConfirmModal
+    v-if="confirming === 'remove'"
+    title="Remove friend?"
+    :message="`You'll no longer be friends with ${user.displayName}.`"
+    confirm-label="Remove"
+    danger
+    :loading="busy === 'remove'"
+    @confirm="removeFriend"
+    @cancel="confirming = null"
+  />
 </template>

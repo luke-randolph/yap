@@ -132,13 +132,13 @@ function extractMessage(e: unknown): string | null {
       <form v-if="step === 'email'" class="mt-6 space-y-4" @submit.prevent="submitEmail">
         <label class="block">
           <span class="text-sm font-medium">Email</span>
-          <input
+          <TextInput
             v-model="email"
             type="email"
             required
             autocomplete="email"
             placeholder="you@example.com"
-            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:border-primary"
+            class="mt-1 w-full"
           />
         </label>
         <button
@@ -178,7 +178,7 @@ function extractMessage(e: unknown): string | null {
       <form v-else-if="step === 'code'" class="mt-6 space-y-4" @submit.prevent="submitCode">
         <label class="block">
           <span class="text-sm font-medium">6-digit code</span>
-          <input
+          <TextInput
             v-model="code"
             inputmode="numeric"
             pattern="\d{6}"
@@ -186,7 +186,7 @@ function extractMessage(e: unknown): string | null {
             required
             autocomplete="one-time-code"
             placeholder="123456"
-            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 tracking-[0.4em] outline-none focus:border-primary"
+            class="mt-1 w-full tracking-[0.4em]"
           />
         </label>
         <button
@@ -208,13 +208,13 @@ function extractMessage(e: unknown): string | null {
       <form v-else-if="step === 'name'" class="mt-6 space-y-4" @submit.prevent="submitName">
         <label class="block">
           <span class="text-sm font-medium">Display name</span>
-          <input
+          <TextInput
             v-model="displayName"
             type="text"
             required
             maxlength="50"
             placeholder="Luke"
-            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:border-primary"
+            class="mt-1 w-full"
           />
         </label>
         <button
@@ -236,13 +236,13 @@ function extractMessage(e: unknown): string | null {
       <form v-else-if="step === 'request'" class="mt-6 space-y-4" @submit.prevent="submitRequest">
         <label class="block">
           <span class="text-sm font-medium">Email</span>
-          <input
+          <TextInput
             v-model="email"
             type="email"
             required
             autocomplete="email"
             placeholder="you@example.com"
-            class="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:border-primary"
+            class="mt-1 w-full"
           />
         </label>
         <button

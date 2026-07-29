@@ -117,24 +117,12 @@ function subline(conversation: ConversationDTO): string {
     <div class="flex items-center justify-between border-b border-border px-4 py-3">
       <h2 class="text-sm font-semibold tracking-wide text-muted-foreground uppercase">Chats</h2>
       <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          title="New chat"
-          aria-label="New chat"
-          @click="emit('newConversation')"
-        >
+        <IconButton label="New chat" @click="emit('newConversation')">
           <Plus class="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
-          title="Close chats"
-          aria-label="Close chats"
-          @click="sidebar.close"
-        >
+        </IconButton>
+        <IconButton label="Close chats" class="md:hidden" @click="sidebar.close">
           <X class="h-4 w-4" />
-        </button>
+        </IconButton>
       </div>
     </div>
 

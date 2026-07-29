@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, LogOut, X } from 'lucide-vue-next';
+import { ChevronDown, LogOut } from 'lucide-vue-next';
 import { AVATAR, getApiError, type ConversationDTO } from '@yap/contracts';
 
 const emit = defineEmits<{
@@ -138,136 +138,119 @@ onBeforeUnmount(clearPreview);
 </script>
 
 <template>
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-overlay/55 backdrop-blur-sm"
-    @click.self="emit('close')"
-  >
-    <div class="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg">
-      <div class="flex items-start justify-between">
-        <h2 class="text-lg font-semibold tracking-tight">Profile</h2>
+  <BaseOverlay title="Profile" @close="emit('close')">
+    <div class="mt-5 flex flex-col items-center gap-4">
+      <UserAvatar :name="auth.user?.displayName ?? ''" :src="displaySrc" :size="112" />
+
+      <input
+        ref="fileInput"
+        type="file"
+        class="hidden"
+        :accept="AVATAR.allowedMimeTypes.join(',')"
+        @change="onFileChange"
+      />
+
+      <div class="flex flex-wrap justify-center gap-2">
         <button
           type="button"
-          class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Close"
-          @click="emit('close')"
+          class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          @click="pickFile"
         >
-          <X class="h-4 w-4" />
+          {{ hasAvatar || selectedFile ? 'Choose another' : 'Choose photo' }}
+        </button>
+        <button
+          v-if="hasAvatar && !selectedFile"
+          type="button"
+          :disabled="removing"
+          class="rounded-md border border-border px-3 py-1.5 text-sm text-destructive-foreground hover:bg-muted disabled:opacity-50"
+          @click="removePhoto"
+        >
+          {{ removing ? 'Removing…' : 'Remove' }}
         </button>
       </div>
 
-      <div class="mt-5 flex flex-col items-center gap-4">
-        <UserAvatar :name="auth.user?.displayName ?? ''" :src="displaySrc" :size="112" />
+      <div v-if="selectedFile" class="flex gap-2">
+        <button
+          type="button"
+          class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          @click="clearPreview"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          :disabled="saving"
+          class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          @click="savePhoto"
+        >
+          {{ saving ? 'Saving…' : 'Save photo' }}
+        </button>
+      </div>
 
-        <input
-          ref="fileInput"
-          type="file"
-          class="hidden"
-          :accept="AVATAR.allowedMimeTypes.join(',')"
-          @change="onFileChange"
+      <p v-if="photoError" class="text-sm text-destructive-foreground">{{ photoError }}</p>
+    </div>
+
+    <div class="mt-6">
+      <label class="text-sm font-medium">Display name</label>
+      <div class="mt-1 flex items-center gap-2">
+        <TextInput
+          v-model="nameDraft"
+          type="text"
+          :maxlength="50"
+          class="min-w-0 flex-1"
+          @keydown.enter.prevent="canSaveName && saveName()"
         />
-
-        <div class="flex flex-wrap justify-center gap-2">
-          <button
-            type="button"
-            class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-            @click="pickFile"
-          >
-            {{ hasAvatar || selectedFile ? 'Choose another' : 'Choose photo' }}
-          </button>
-          <button
-            v-if="hasAvatar && !selectedFile"
-            type="button"
-            :disabled="removing"
-            class="rounded-md border border-border px-3 py-1.5 text-sm text-destructive-foreground hover:bg-muted disabled:opacity-50"
-            @click="removePhoto"
-          >
-            {{ removing ? 'Removing…' : 'Remove' }}
-          </button>
-        </div>
-
-        <div v-if="selectedFile" class="flex gap-2">
-          <button
-            type="button"
-            class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-            @click="clearPreview"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            :disabled="saving"
-            class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-            @click="savePhoto"
-          >
-            {{ saving ? 'Saving…' : 'Save photo' }}
-          </button>
-        </div>
-
-        <p v-if="photoError" class="text-sm text-destructive-foreground">{{ photoError }}</p>
-      </div>
-
-      <div class="mt-6">
-        <label class="text-sm font-medium">Display name</label>
-        <div class="mt-1 flex items-center gap-2">
-          <input
-            v-model="nameDraft"
-            type="text"
-            :maxlength="50"
-            class="min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            @keydown.enter.prevent="canSaveName && saveName()"
-          />
-          <button
-            type="button"
-            :disabled="!canSaveName"
-            class="shrink-0 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-            @click="saveName"
-          >
-            {{ savingName ? 'Saving…' : 'Save' }}
-          </button>
-        </div>
-        <p v-if="nameError" class="mt-1 text-sm text-destructive-foreground">{{ nameError }}</p>
-      </div>
-
-      <div v-if="blocked.length" class="mt-6">
         <button
           type="button"
-          class="flex w-full items-center justify-between text-sm font-medium"
-          :aria-expanded="blockedOpen"
-          @click="blockedOpen = !blockedOpen"
+          :disabled="!canSaveName"
+          class="shrink-0 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          @click="saveName"
         >
-          <span>Blocked groups ({{ blocked.length }})</span>
-          <ChevronDown
-            class="h-4 w-4 text-muted-foreground transition-transform"
-            :class="blockedOpen ? 'rotate-180' : ''"
-          />
+          {{ savingName ? 'Saving…' : 'Save' }}
         </button>
-        <ul v-if="blockedOpen" class="mt-2 space-y-1">
-          <li
-            v-for="conversation in blocked"
-            :key="conversation.id"
-            class="flex items-center gap-2 rounded-md border border-border px-2 py-1.5"
-          >
-            <span class="min-w-0 flex-1 truncate text-sm">{{ conversation.displayName }}</span>
-            <button
-              type="button"
-              :disabled="unblocking.has(conversation.id)"
-              class="shrink-0 rounded-md px-2 py-1 text-xs text-primary hover:bg-muted disabled:opacity-50"
-              @click="unblock(conversation)"
-            >
-              Unblock
-            </button>
-          </li>
-        </ul>
       </div>
+      <p v-if="nameError" class="mt-1 text-sm text-destructive-foreground">{{ nameError }}</p>
+    </div>
 
+    <div v-if="blocked.length" class="mt-6">
       <button
         type="button"
-        class="mt-6 flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-        @click="auth.user?.isGuest ? emit('exit-demo') : emit('logout')"
+        class="flex w-full items-center justify-between text-sm font-medium"
+        :aria-expanded="blockedOpen"
+        @click="blockedOpen = !blockedOpen"
       >
-        <LogOut class="h-4 w-4" />
-        {{ auth.user?.isGuest ? 'Exit demo' : 'Log out' }}
+        <span>Blocked groups ({{ blocked.length }})</span>
+        <ChevronDown
+          class="h-4 w-4 text-muted-foreground transition-transform"
+          :class="blockedOpen ? 'rotate-180' : ''"
+        />
       </button>
+      <ul v-if="blockedOpen" class="mt-2 space-y-1">
+        <li
+          v-for="conversation in blocked"
+          :key="conversation.id"
+          class="flex items-center gap-2 rounded-md border border-border px-2 py-1.5"
+        >
+          <span class="min-w-0 flex-1 truncate text-sm">{{ conversation.displayName }}</span>
+          <button
+            type="button"
+            :disabled="unblocking.has(conversation.id)"
+            class="shrink-0 rounded-md px-2 py-1 text-xs text-primary hover:bg-muted disabled:opacity-50"
+            @click="unblock(conversation)"
+          >
+            Unblock
+          </button>
+        </li>
+      </ul>
     </div>
-  </div>
+
+    <button
+      type="button"
+      class="mt-6 flex w-full items-center justify-center gap-2 rounded-md border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+      @click="auth.user?.isGuest ? emit('exit-demo') : emit('logout')"
+    >
+      <LogOut class="h-4 w-4" />
+      {{ auth.user?.isGuest ? 'Exit demo' : 'Log out' }}
+    </button>
+  </BaseOverlay>
 </template>
