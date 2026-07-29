@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, Pin, RotateCcw, Trash2 } from 'lucide-vue-next';
+import { ChevronDown, MoreHorizontal, Pin, RotateCcw, Trash2 } from 'lucide-vue-next';
 import type { ConversationDTO, UserPublicDTO } from '@yap/contracts';
 import type { ChatMessage } from '~/stores/messages';
 
@@ -105,6 +105,58 @@ function toggleReaction(m: ChatMessage, emoji: string): void {
   }
 }
 
+const sheetMessage = ref<ChatMessage | null>(null);
+
+const sheetEmoji = computed(() =>
+  sheetMessage.value
+    ? messages.currentUserReaction(props.conversation.id, sheetMessage.value.id)
+    : undefined,
+);
+
+const longPress = useLongPress<ChatMessage>((m) => {
+  if (props.readonly || m.id.startsWith('temp-')) return;
+  sheetMessage.value = m;
+});
+
+function sheetPreview(m: ChatMessage): string {
+  return m.body ?? (m.attachments.length ? 'Photo' : 'Message');
+}
+
+function onSheetReact(emoji: string): void {
+  const m = sheetMessage.value;
+  sheetMessage.value = null;
+  if (m) toggleReaction(m, emoji);
+}
+
+function onSheetReply(): void {
+  const m = sheetMessage.value;
+  sheetMessage.value = null;
+  if (m) messages.setReplyTarget(m);
+}
+
+function onSheetPin(): void {
+  const m = sheetMessage.value;
+  sheetMessage.value = null;
+  if (m) togglePin(m);
+}
+
+async function onSheetCopy(): Promise<void> {
+  const body = sheetMessage.value?.body;
+  sheetMessage.value = null;
+  if (!body) return;
+  try {
+    await navigator.clipboard.writeText(body);
+    toasts.success('Copied');
+  } catch {
+    toasts.error("Couldn't copy message");
+  }
+}
+
+function onSheetDelete(): void {
+  pendingDelete.value = sheetMessage.value;
+  sheetMessage.value = null;
+}
+
 function retryFailed(m: ChatMessage): void {
   if (m.clientMessageId) void messages.retrySend(props.conversation.id, m.clientMessageId);
 }
@@ -173,6 +225,7 @@ watch(
   () => props.conversation.id,
   async (id) => {
     messages.clearReplyTarget();
+    sheetMessage.value = null;
     isAtBottom.value = true;
     await messages.ensureLoaded(id);
     scrollToBottom();
@@ -288,7 +341,7 @@ watch(
                   :class="isFromCurrentUser(m.senderId) ? 'flex-row-reverse' : 'flex-row'"
                 >
                   <div
-                    class="min-w-0 max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow"
+                    class="min-w-0 max-w-[75%] rounded-3xl border p-3 text-sm transition-shadow pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]"
                     :class="[
                       isFromCurrentUser(m.senderId)
                         ? 'rounded-br-none bg-primary text-primary-foreground'
@@ -300,6 +353,11 @@ watch(
                           : 'border-transparent',
                       highlightedId === m.id ? 'shadow-message-highlight' : '',
                     ]"
+                    @pointerdown="longPress.start($event, m)"
+                    @pointermove="longPress.move"
+                    @pointerup="longPress.cancel"
+                    @pointercancel="longPress.cancel"
+                    @contextmenu="longPress.onContextMenu"
                   >
                     <p
                       v-if="
@@ -335,7 +393,7 @@ watch(
                     <p v-if="m.body" class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
                   </div>
                   <MessageActions
-                    class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+                    class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:hidden"
                     :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
                     :pinned="!!m.pinnedAt"
                     :can-delete="isFromCurrentUser(m.senderId) && !m.id.startsWith('temp-')"
@@ -344,6 +402,15 @@ watch(
                     @pin="togglePin(m)"
                     @delete="pendingDelete = m"
                   />
+                  <button
+                    v-if="!readonly && !m.id.startsWith('temp-')"
+                    type="button"
+                    class="hidden shrink-0 rounded-md p-1 text-muted-foreground pointer-coarse:block"
+                    aria-label="Message actions"
+                    @click="sheetMessage = m"
+                  >
+                    <MoreHorizontal class="h-4 w-4" />
+                  </button>
                 </div>
                 <MessageReactions
                   :reactions="m.reactions"
@@ -410,6 +477,21 @@ watch(
       :loading="deleting"
       @confirm="confirmDelete"
       @cancel="pendingDelete = null"
+    />
+
+    <MessageActionSheet
+      v-if="sheetMessage"
+      :preview="sheetPreview(sheetMessage)"
+      :pinned="!!sheetMessage.pinnedAt"
+      :can-copy="!!sheetMessage.body"
+      :can-delete="isFromCurrentUser(sheetMessage.senderId)"
+      :current-emoji="sheetEmoji"
+      @react="onSheetReact"
+      @reply="onSheetReply"
+      @pin="onSheetPin"
+      @copy="onSheetCopy"
+      @delete="onSheetDelete"
+      @close="sheetMessage = null"
     />
 
     <UserProfileModal v-if="selectedUser" :user="selectedUser" @close="selectedUser = null" />
