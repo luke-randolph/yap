@@ -1,13 +1,22 @@
 <script setup lang="ts">
-import { Pin, PinOff, Reply, Trash2 } from 'lucide-vue-next';
+import { Copy, Pin, PinOff, Reply, Trash2 } from 'lucide-vue-next';
 
-withDefaults(defineProps<{ align?: 'left' | 'right'; pinned?: boolean; canDelete?: boolean }>(), {
-  align: 'right',
-  pinned: false,
-  canDelete: false,
-});
+withDefaults(
+  defineProps<{
+    align?: 'left' | 'right';
+    pinned?: boolean;
+    canCopy?: boolean;
+    canDelete?: boolean;
+  }>(),
+  {
+    align: 'right',
+    pinned: false,
+    canCopy: false,
+    canDelete: false,
+  },
+);
 
-defineEmits<{ reply: []; react: [emoji: string]; pin: []; delete: [] }>();
+defineEmits<{ reply: []; react: [emoji: string]; pin: []; copy: []; delete: [] }>();
 </script>
 
 <template>
@@ -29,6 +38,15 @@ defineEmits<{ reply: []; react: [emoji: string]; pin: []; delete: [] }>();
     >
       <PinOff v-if="pinned" class="h-4 w-4" />
       <Pin v-else class="h-4 w-4" />
+    </button>
+    <button
+      v-if="canCopy"
+      type="button"
+      class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+      title="Copy text"
+      @click="$emit('copy')"
+    >
+      <Copy class="h-4 w-4" />
     </button>
     <button
       v-if="canDelete"

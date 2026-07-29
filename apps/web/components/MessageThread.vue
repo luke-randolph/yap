@@ -140,16 +140,20 @@ function onSheetPin(): void {
   if (m) togglePin(m);
 }
 
-async function onSheetCopy(): Promise<void> {
-  const body = sheetMessage.value?.body;
-  sheetMessage.value = null;
-  if (!body) return;
+async function copyMessage(m: ChatMessage): Promise<void> {
+  if (!m.body) return;
   try {
-    await navigator.clipboard.writeText(body);
+    await navigator.clipboard.writeText(m.body);
     toasts.success('Copied');
   } catch {
     toasts.error("Couldn't copy message");
   }
+}
+
+function onSheetCopy(): void {
+  const m = sheetMessage.value;
+  sheetMessage.value = null;
+  if (m) void copyMessage(m);
 }
 
 function onSheetDelete(): void {
@@ -396,10 +400,12 @@ watch(
                     class="opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:hidden"
                     :align="isFromCurrentUser(m.senderId) ? 'right' : 'left'"
                     :pinned="!!m.pinnedAt"
+                    :can-copy="!!m.body"
                     :can-delete="isFromCurrentUser(m.senderId) && !m.id.startsWith('temp-')"
                     @reply="messages.setReplyTarget(m)"
                     @react="toggleReaction(m, $event)"
                     @pin="togglePin(m)"
+                    @copy="copyMessage(m)"
                     @delete="pendingDelete = m"
                   />
                   <button
