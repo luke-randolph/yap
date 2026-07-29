@@ -416,15 +416,14 @@ watch(
                     @copy="copyMessage(m)"
                     @delete="pendingDelete = m"
                   />
-                  <button
+                  <IconButton
                     v-if="!readonly && !m.id.startsWith('temp-')"
-                    type="button"
-                    class="hidden shrink-0 rounded-md p-1 text-muted-foreground pointer-coarse:block"
-                    aria-label="Message actions"
+                    label="Message actions"
+                    class="hidden shrink-0 pointer-coarse:block"
                     @click="sheetMessage = m"
                   >
                     <MoreHorizontal class="h-4 w-4" />
-                  </button>
+                  </IconButton>
                 </div>
                 <MessageReactions
                   :reactions="m.reactions"

@@ -15,10 +15,15 @@ const loading = ref(false);
 const errored = ref(false);
 const scroller = ref<HTMLElement | null>(null);
 
+// Only the newest request may write; older ones are discarded when they land.
+let latestRequest = 0;
+
 // Fetch a page. `reset` starts a fresh query; otherwise appends the next page.
 async function fetchPage(reset: boolean): Promise<void> {
-  if (loading.value) return;
+  // A new search supersedes whatever is in flight; pagination waits its turn.
+  if (!reset && loading.value) return;
   if (!reset && next.value === null && results.value.length > 0) return;
+  const request = ++latestRequest;
   loading.value = true;
   errored.value = false;
   try {
@@ -29,6 +34,7 @@ async function fetchPage(reset: boolean): Promise<void> {
         pos: reset ? undefined : (next.value ?? undefined),
       },
     });
+    if (request !== latestRequest) return;
     if (reset) {
       results.value = res.results;
     } else {
@@ -37,9 +43,9 @@ async function fetchPage(reset: boolean): Promise<void> {
     }
     next.value = res.next;
   } catch {
-    errored.value = true;
+    if (request === latestRequest) errored.value = true;
   } finally {
-    loading.value = false;
+    if (request === latestRequest) loading.value = false;
   }
 }
 
@@ -70,6 +76,7 @@ function choose(gif: GifDTO): void {
 onMounted(() => fetchPage(true));
 onBeforeUnmount(() => {
   if (searchTimer) clearTimeout(searchTimer);
+  latestRequest++;
 });
 </script>
 
@@ -84,17 +91,12 @@ onBeforeUnmount(() => {
           v-model="query"
           type="text"
           placeholder="Search GIFs"
-          class="w-full rounded-md border border-border bg-background py-1.5 pl-8 pr-2 text-sm outline-none focus:border-primary"
+          class="w-full rounded-md border border-border bg-background py-1.5 pl-8 pr-2 text-sm pointer-coarse:text-base outline-none focus:border-primary"
         />
       </div>
-      <button
-        type="button"
-        class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-        title="Close"
-        @click="emit('close')"
-      >
+      <IconButton label="Close" @click="emit('close')">
         <X class="h-4 w-4" />
-      </button>
+      </IconButton>
     </div>
 
     <div ref="scroller" class="flex-1 overflow-y-auto p-2" @scroll="onScroll">

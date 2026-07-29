@@ -102,17 +102,16 @@ async function handleExitDemo() {
       <main class="flex min-h-0 min-w-0 flex-1 flex-col">
         <div v-if="!conversations.selected" class="flex min-h-0 flex-1 flex-col">
           <div class="flex items-center border-b border-border bg-card px-4 py-3 md:hidden">
-            <button
-              type="button"
-              class="-ml-1 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-              title="Show chats"
-              aria-label="Show chats"
+            <IconButton
+              label="Show chats"
+              size="md"
+              class="-ml-1"
               aria-controls="conversation-sidebar"
               :aria-expanded="sidebar.isOpen"
               @click="sidebar.toggle"
             >
               <Menu class="h-5 w-5" />
-            </button>
+            </IconButton>
           </div>
           <FriendsHome />
         </div>

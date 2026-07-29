@@ -79,36 +79,24 @@ async function saveName() {
         @keydown.enter.prevent="saveName"
         @keydown.esc="cancelEditName"
       />
-      <button
-        type="button"
-        class="rounded-md p-1.5 text-success hover:bg-muted disabled:opacity-50"
-        title="Save"
-        :disabled="savingName"
-        @click="saveName"
-      >
+      <IconButton label="Save" size="md" tone="success" :disabled="savingName" @click="saveName">
         <Check class="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        class="rounded-md p-1.5 text-destructive hover:bg-muted"
-        title="Cancel"
-        @click="cancelEditName"
-      >
+      </IconButton>
+      <IconButton label="Cancel" size="md" tone="destructive" @click="cancelEditName">
         <X class="h-4 w-4" />
-      </button>
+      </IconButton>
     </div>
     <div v-else class="flex items-center gap-4">
-      <button
-        type="button"
-        class="-ml-1 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
-        title="Show chats"
-        aria-label="Show chats"
+      <IconButton
+        label="Show chats"
+        size="md"
+        class="-ml-1 md:hidden"
         aria-controls="conversation-sidebar"
         :aria-expanded="sidebar.isOpen"
         @click="sidebar.toggle"
       >
         <Menu class="h-5 w-5" />
-      </button>
+      </IconButton>
       <div class="flex items-center -space-x-2">
         <button
           v-for="u in shownDiscs"

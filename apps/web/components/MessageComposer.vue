@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ImagePlus, Reply, SendHorizontal, Smile, X } from 'lucide-vue-next';
 import { onClickOutside, onKeyStroke } from '@vueuse/core';
-import type { EmojiClickEventDetail } from 'vuemoji-picker';
 import { MESSAGE_IMAGE, VALIDATION_LIMITS } from '@yap/contracts';
 import type { GifSelection } from '~/stores/messages';
 
@@ -12,29 +11,8 @@ const props = defineProps<{
 const messages = useMessagesStore();
 const conversations = useConversationsStore();
 const auth = useAuthStore();
-const colorMode = useColorMode();
-const isDark = computed(() => colorMode.value === 'dark');
-const pickerStyle = {
-  width: '320px',
-  height: '380px',
-  borderSize: '0',
-  background: 'var(--card)',
-  borderColor: 'var(--border)',
-  indicatorColor: 'var(--primary)',
-  inputBorderColor: 'var(--border)',
-  inputFontColor: 'var(--foreground)',
-  inputPlaceholderColor: 'var(--muted-foreground)',
-  categoryFontColor: 'var(--muted-foreground)',
-  buttonHoverBackground: 'var(--muted)',
-  buttonActiveBackground: 'var(--accent)',
-  outlineColor: 'var(--primary)',
-};
 
 const draft = ref('');
-
-const EmojiPicker = defineAsyncComponent(() =>
-  import('vuemoji-picker').then((m) => m.VuemojiPicker),
-);
 
 const textarea = ref<HTMLTextAreaElement | null>(null);
 const emojiRoot = ref<HTMLElement | null>(null);
@@ -74,9 +52,7 @@ function onGifSelect(gif: GifSelection) {
   void messages.sendGif(props.conversationId, gif, body, parentMessageId);
 }
 
-function insertEmoji(detail: EmojiClickEventDetail) {
-  const char = detail.unicode;
-  if (!char) return;
+function insertEmoji(char: string) {
   const el = textarea.value;
   const start = el?.selectionStart ?? draft.value.length;
   const end = el?.selectionEnd ?? draft.value.length;
@@ -209,16 +185,11 @@ async function send() {
           class="absolute bottom-full left-0 z-10 mb-2 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
         >
           <div class="flex items-center justify-end px-2 py-1">
-            <button
-              type="button"
-              class="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-              title="Close"
-              @click="emojiOpen = false"
-            >
+            <IconButton label="Close" @click="emojiOpen = false">
               <X class="h-4 w-4" />
-            </button>
+            </IconButton>
           </div>
-          <EmojiPicker :is-dark="isDark" :picker-style="pickerStyle" @emoji-click="insertEmoji" />
+          <EmojiPicker @select="insertEmoji" />
         </div>
       </div>
       <div ref="gifRoot" class="relative self-center">
@@ -259,7 +230,7 @@ async function send() {
         rows="1"
         :maxlength="VALIDATION_LIMITS.maxMessageBodyLength"
         placeholder="Type a message…"
-        class="max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+        class="max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm pointer-coarse:text-base outline-none focus:border-primary"
         @keydown.enter.exact.prevent="send"
       />
       <button
