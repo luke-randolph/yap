@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { X } from 'lucide-vue-next';
-import { onKeyStroke } from '@vueuse/core';
 
 const props = withDefaults(
   defineProps<{
@@ -27,20 +26,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ close: [] }>();
 
-// An overlay you can't dismiss shouldn't offer a close button.
 const showClose = computed(() => props.closable ?? props.dismissible);
-
-const { zIndex, isTopmost } = useOverlayStack();
-
-function dismiss(): void {
-  if (props.dismissible) emit('close');
-}
-
-onKeyStroke('Escape', (event) => {
-  if (!props.dismissible || !isTopmost()) return;
-  event.preventDefault();
-  emit('close');
-});
 
 const panelClass = computed(() =>
   props.position === 'bottom'
@@ -58,12 +44,7 @@ const panelClass = computed(() =>
 </script>
 
 <template>
-  <div
-    class="fixed inset-0 flex bg-overlay/55 backdrop-blur-sm"
-    :class="position === 'bottom' ? 'flex-col justify-end' : 'items-center justify-center'"
-    :style="{ zIndex }"
-    @click.self="dismiss"
-  >
+  <OverlayBackdrop :position="position" :dismissible="dismissible" @close="emit('close')">
     <Transition
       appear
       :css="position === 'bottom'"
@@ -87,5 +68,5 @@ const panelClass = computed(() =>
         <slot />
       </div>
     </Transition>
-  </div>
+  </OverlayBackdrop>
 </template>

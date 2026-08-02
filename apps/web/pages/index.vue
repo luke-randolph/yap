@@ -160,8 +160,8 @@ async function handleExitDemo() {
       @exit-demo="handleExitDemo"
     />
 
-    <AdminPanel v-if="showAdmin && auth.user?.isAdmin" @close="showAdmin = false" />
+    <AdminModal v-if="showAdmin && auth.user?.isAdmin" @close="showAdmin = false" />
 
-    <DisplayNamePrompt v-if="auth.needsDisplayName" />
+    <DisplayNameModal v-if="auth.needsDisplayName" />
   </div>
 </template>
