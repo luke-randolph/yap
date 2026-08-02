@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown, MoreHorizontal, Pin, RotateCcw, Trash2 } from 'lucide-vue-next';
-import type { ConversationDTO, UserPublicDTO } from '@yap/contracts';
+import type { ConversationDTO, MessageAttachmentDTO, UserPublicDTO } from '@yap/contracts';
 import type { ChatMessage } from '~/stores/messages';
 
 const props = defineProps<{
@@ -122,6 +122,14 @@ function sheetPreview(m: ChatMessage): string {
   return m.body ?? (m.attachments.length ? 'Photo' : 'Message');
 }
 
+const lightboxAttachment = ref<MessageAttachmentDTO | null>(null);
+
+function openAttachment(attachment: MessageAttachmentDTO): void {
+  // A long press already opened the action sheet; don't stack the lightbox on it.
+  if (sheetMessage.value) return;
+  lightboxAttachment.value = attachment;
+}
+
 function onSheetReact(emoji: string): void {
   const m = sheetMessage.value;
   sheetMessage.value = null;
@@ -230,6 +238,7 @@ watch(
   async (id) => {
     messages.clearReplyTarget();
     sheetMessage.value = null;
+    lightboxAttachment.value = null;
     isAtBottom.value = true;
     await messages.ensureLoaded(id);
     scrollToBottom();
@@ -385,15 +394,21 @@ watch(
                       <span class="font-medium">{{ parentSender(m) }}</span>
                       <span class="block truncate">{{ parentSnippet(m) }}</span>
                     </div>
-                    <img
+                    <button
                       v-for="att in m.attachments"
                       :key="att.id"
-                      :src="att.url"
-                      alt="Image attachment"
-                      loading="lazy"
-                      class="max-h-80 max-w-full rounded-lg object-cover"
+                      type="button"
+                      class="block max-w-full cursor-zoom-in rounded-lg transition-opacity hover:opacity-90"
                       :class="m.body ? 'mb-1' : ''"
-                    />
+                      @click="openAttachment(att)"
+                    >
+                      <img
+                        :src="att.url"
+                        alt="Image attachment"
+                        loading="lazy"
+                        class="max-h-80 max-w-full rounded-lg object-cover"
+                      />
+                    </button>
                     <p v-if="m.body" class="whitespace-pre-wrap wrap-anywhere">{{ m.body }}</p>
                     <span
                       v-if="m.pinnedAt"
@@ -504,5 +519,13 @@ watch(
     />
 
     <UserProfileModal v-if="selectedUser" :user="selectedUser" @close="selectedUser = null" />
+
+    <ImageLightbox
+      v-if="lightboxAttachment"
+      :src="lightboxAttachment.url"
+      :width="lightboxAttachment.width"
+      :height="lightboxAttachment.height"
+      @close="lightboxAttachment = null"
+    />
   </div>
 </template>
