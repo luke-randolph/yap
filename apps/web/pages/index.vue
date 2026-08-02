@@ -20,6 +20,11 @@ onMounted(async () => {
   friends.fetchAll().catch(() => undefined);
 });
 
+function showHome() {
+  conversations.select(null);
+  sidebar.close();
+}
+
 function onCreated(conversation: ConversationDTO) {
   conversations.select(conversation.id);
   showNewConversation.value = false;
@@ -60,7 +65,7 @@ async function handleExitDemo() {
           class="relative rounded-md p-0.5 hover:opacity-80"
           title="Home"
           aria-label="Home"
-          @click="conversations.select(null)"
+          @click="showHome"
         >
           <img src="/yap-logo.png" alt="Yap" class="h-7 w-auto" />
         </button>
